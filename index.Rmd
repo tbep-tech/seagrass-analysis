@@ -1,0 +1,140 @@
+---
+output: 
+  html_document
+title: "Seagrass coverage estimates"
+css: styles.css
+runtime: shiny
+---
+
+# {.tabset .tabset-pills}
+
+Source code here: https://github.com/tbep-tech/seagrass-analysis
+
+```{r setup, message = F, warning = F, results = 'hide', echo = F}
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F, echo = F, fig.path = 'figs/', fig.path = 'figures/')
+box::use(
+  units[set_units], 
+  dplyr[...],
+  tidyr[spread, gather],
+  sf[st_read, st_set_geometry, st_intersection, st_transform, st_crs, st_area], 
+  downloadthis[download_this],
+  here[...], 
+  reactable[...], 
+  shiny[...], 
+  ./R/funcs
+)
+data(file = 'seagrass', package = 'tbeptools')
+data(file = 'sgseg', package = 'tbeptools')
+load(file = here('data/allsegests.RData'))
+load(file = here('data/allmngests.RData'))
+
+# year to select
+yrs <- unique(allsegests$yr) %>% 
+  sort %>% 
+  .[1:(length(.) - 1)]
+
+# combined segment estimates
+segcmbests <- allsegests %>% 
+  group_by(yr, Segment) %>% 
+  summarise(
+    Acres = sum(Acres, na.rm = T), 
+    .groups = 'drop'
+    ) %>% 
+  spread(yr, Acres, fill = 0)
+
+# patchy segment estimates
+segptcests <- allsegests %>% 
+  filter(Habitat == 'patchy') %>% 
+  select(yr, Segment, Acres) %>% 
+  spread(yr, Acres, fill = 0)
+
+# continuous segment estimates
+segcntests <- allsegests %>% 
+  filter(Habitat == 'cont.') %>% 
+  select(yr, Segment, Acres) %>% 
+  spread(yr, Acres, fill = 0)
+
+# combined management estimates
+mngcmbests <- allmngests %>% 
+  group_by(yr, Areas) %>% 
+  summarise(
+    Acres = sum(Acres, na.rm = T), 
+    .groups = 'drop'
+    ) %>% 
+  spread(yr, Acres, fill = 0)
+
+# patchy segment estimates
+mngptcests <- allmngests %>% 
+  filter(Habitat == 'patchy') %>% 
+  select(yr, Areas, Acres) %>% 
+  spread(yr, Acres, fill = 0)
+
+# continuous segment estimates
+mngcntests <- allmngests %>% 
+  filter(Habitat == 'cont.') %>% 
+  select(yr, Areas, Acres) %>% 
+  spread(yr, Acres, fill = 0)
+```
+
+```{r reactives}
+# segment trend table
+segcmbtab <- reactive({
+  
+  # inputs
+  yrsel <- input$yrsel
+  sums <- segcmbests %>%
+    rename(chgyr = !!yrsel) %>% 
+    mutate(
+      chg = `2020` -  chgyr,
+      chgper = 100 * (`2020` - chgyr) / chgyr
+    )
+  
+  names(sums)[names(sums) == 'chgyr'] <- yrsel
+  out <- funcs$sgrctfun(sums, 'Segment', yrsel = yrsel, topyr = '2020')
+
+  return(out)
+  
+})
+```
+
+```{r}
+selectInput('yrsel', 'Select year comparison', choices = yrs, selected = yrs[1])
+```
+
+##### `r renderText(input$yrsel)` to 2020 change {.tabset .tabset-pills} 
+
+## Combined patchy/continuous {.tabset}
+
+### Combined annual 
+
+```{r}
+download_this(seagrass, 
+  output_name = "sgests-all",
+  output_extension = ".xlsx",
+  button_label = "Download data",
+  button_type = "warning",
+  has_icon = TRUE,
+  icon = "fa fa-save" 
+  )
+
+knitr::kable(seagrass, caption = 'All estimates for all segments, based on historical coverages used to report on annual progress toward recovery goals.')
+```
+
+[download figure](figures/seagrasscov.png)
+
+```{r, out.width = '100%'}
+knitr::include_graphics(here('figures/seagrasscov.png'))
+```
+
+### By bay segment
+
+```{r}
+output$segcmbtab <- renderReactable(segcmbtab())
+reactableOutput('segcmbtab')
+```
+
+## Separate patchy/continuous {.tabset}
+
+### Combined annual
+
+### By bay segment
