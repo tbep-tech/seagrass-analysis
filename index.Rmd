@@ -34,6 +34,7 @@ yrs <- unique(allsegests$yr) %>%
 
 # combined segment estimates
 segcmbests <- allsegests %>% 
+  filter(Habitat %in% c('patchy', 'cont.')) %>% 
   group_by(yr, Segment) %>% 
   summarise(
     Acres = sum(Acres, na.rm = T), 
@@ -55,6 +56,7 @@ segcntests <- allsegests %>%
 
 # combined management estimates
 mngcmbests <- allmngests %>% 
+  filter(Habitat %in% c('patchy', 'cont.')) %>% 
   group_by(yr, Areas) %>% 
   summarise(
     Acres = sum(Acres, na.rm = T), 
@@ -76,6 +78,17 @@ mngcntests <- allmngests %>%
 ```
 
 ```{r reactives}
+# segment combined trend table
+segcmbtab <- reactive({
+  
+  # inputs
+  yrsel1 <- input$yrsel1
+  out <- sgrctfun(segcmbests, 'Segment', yrsel = yrsel1)
+
+  return(out)
+  
+})
+
 # segment cont trend table
 segcnttab <- reactive({
   
@@ -98,12 +111,12 @@ segptctab <- reactive({
   
 })
 
-# segment combined trend table
-segcmbtab <- reactive({
+# management area combined trend table
+mngcmbtab <- reactive({
   
   # inputs
-  yrsel1 <- input$yrsel1
-  out <- sgrctfun(segcmbests, 'Segment', yrsel = yrsel1)
+  yrsel2 <- input$yrsel2
+  out <- sgrctfun(mngcmbests, 'Areas', yrsel = yrsel2)
 
   return(out)
   
@@ -126,17 +139,6 @@ mngptctab <- reactive({
   # inputs
   yrsel2 <- input$yrsel2
   out <- sgrctfun(mngptcests, 'Areas', yrsel = yrsel2)
-
-  return(out)
-  
-})
-
-# management area combined trend table
-mngcmbtab <- reactive({
-  
-  # inputs
-  yrsel2 <- input$yrsel2
-  out <- sgrctfun(mngcmbests, 'Areas', yrsel = yrsel2)
 
   return(out)
   
@@ -172,7 +174,15 @@ selectInput('yrsel1', 'Select year comparison', choices = yrs, selected = yrs[1]
 
 ##### `r renderText(input$yrsel1)` to 2020 change {.tabset .tabset-pills} 
 
-### Continuous {.tabset}
+
+### Continous + Patchy
+
+```{r}
+output$segcmbtab <- renderReactable(segcmbtab())
+reactableOutput('segcmbtab')
+```
+
+### Continuous
 
 ```{r}
 output$segcnttab <- renderReactable(segcnttab())
@@ -186,13 +196,6 @@ output$segptctab <- renderReactable(segptctab())
 reactableOutput('segptctab')
 ```
 
-### Continous + Patchy
-
-```{r}
-output$segcmbtab <- renderReactable(segcmbtab())
-reactableOutput('segcmbtab')
-```
-
 ## By management area {.tabset}
 
 ```{r}
@@ -201,7 +204,14 @@ selectInput('yrsel2', 'Select year comparison', choices = yrs, selected = yrs[1]
 
 ##### `r renderText(input$yrsel2)` to 2020 change {.tabset .tabset-pills} 
 
-### Continuous {.tabset}
+### Continous + Patchy
+
+```{r}
+output$mngcmbtab <- renderReactable(mngcmbtab())
+reactableOutput('mngcmbtab')
+```
+
+### Continuous
 
 ```{r}
 output$mngcnttab <- renderReactable(mngcnttab())
@@ -213,11 +223,4 @@ reactableOutput('mngcnttab')
 ```{r}
 output$mngptctab <- renderReactable(mngptctab())
 reactableOutput('mngptctab')
-```
-
-### Continous + Patchy
-
-```{r}
-output$mngcmbtab <- renderReactable(mngcmbtab())
-reactableOutput('mngcmbtab')
 ```
