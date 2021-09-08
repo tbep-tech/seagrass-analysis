@@ -22,21 +22,23 @@ box::use(
   here[...], 
   dplyr[...],
   shiny[...], 
+  leaflet[renderLeaflet, leafletOutput],
   tidyr[spread, gather],
   downloadthis[download_this],
   reactable[reactableOutput, renderReactable], 
   knitr[include_graphics, kable], 
-  R/funcs[sgrctfun]
+  R/funcs[sgrctfun, sgmapfun]
 )
 data(file = 'seagrass', package = 'tbeptools')
 data(file = 'sgseg', package = 'tbeptools')
+data(file = 'sgmanagement', package = 'tbeptools')
 load(file = here('data/allsegests.RData'))
 load(file = here('data/allmngests.RData'))
 
 # years to select
 yrs <- unique(allsegests$yr) %>% 
   sort %>% 
-  .[1:(length(.) - 1)]
+  .[1:(length(.))]
 
 # combined segment estimates
 segcmbests <- allsegests %>% 
@@ -70,17 +72,27 @@ mngcmbests <- allmngests %>%
     ) %>% 
   spread(yr, Acres, fill = 0)
 
-# patchy segment estimates
+# patchy management estimates
 mngptcests <- allmngests %>% 
   filter(Habitat == 'patchy') %>% 
   select(yr, Areas, Acres) %>% 
   spread(yr, Acres, fill = 0)
 
-# continuous segment estimates
+# continuous management estimates
 mngcntests <- allmngests %>% 
   filter(Habitat == 'cont.') %>% 
   select(yr, Areas, Acres) %>% 
   spread(yr, Acres, fill = 0)
+
+# max segment value
+segmaxv <- segcmbests %>% 
+  select_if(is.numeric) %>% 
+  max()
+
+# max management value
+mngmaxv <- mngcmbests %>% 
+  select_if(is.numeric) %>% 
+  max()
 ```
 
 ```{r reactives}
@@ -90,6 +102,17 @@ segcmbtab <- reactive({
   # inputs
   yrsel1 <- input$yrsel1
   out <- sgrctfun(segcmbests, 'Segment', yrsel = yrsel1)
+
+  return(out)
+  
+})
+
+# segment combined map
+segcmbmap <- reactive({
+  
+  # inputs
+  yrsel1 <- input$yrsel1
+  out <- sgmapfun(segcmbests, 'Segment', yrsel = yrsel1, bndin = sgseg, maxv = segmaxv)
 
   return(out)
   
@@ -106,12 +129,34 @@ segcnttab <- reactive({
   
 })
 
+# segment cont map
+segcntmap <- reactive({
+  
+  # inputs
+  yrsel1 <- input$yrsel1
+  out <- sgmapfun(segcntests, 'Segment', yrsel = yrsel1, bndin = sgseg, maxv = segmaxv)
+
+  return(out)
+  
+})
+
 # segment patchy trend table
 segptctab <- reactive({
   
   # inputs
   yrsel1 <- input$yrsel1
   out <- sgrctfun(segptcests, 'Segment', yrsel = yrsel1)
+
+  return(out)
+  
+})
+
+# segment patchy map
+segptcmap <- reactive({
+  
+  # inputs
+  yrsel1 <- input$yrsel1
+  out <- sgmapfun(segptcests, 'Segment', yrsel = yrsel1, bndin = sgseg, maxv = segmaxv)
 
   return(out)
   
@@ -128,6 +173,17 @@ mngcmbtab <- reactive({
   
 })
 
+# management area combined map
+mngcmbmap <- reactive({
+  
+  # inputs
+  yrsel2 <- input$yrsel2
+  out <- sgmapfun(mngcmbests, 'Areas', yrsel = yrsel2, bndin = sgmanagement, maxv = mngmaxv)
+
+  return(out)
+  
+})
+
 # management area cont trend table
 mngcnttab <- reactive({
   
@@ -139,12 +195,34 @@ mngcnttab <- reactive({
   
 })
 
+# management area cont map
+mngcntmap <- reactive({
+  
+  # inputs
+  yrsel2 <- input$yrsel2
+  out <- sgmapfun(mngcntests, 'Areas', yrsel = yrsel2, bndin = sgmanagement, maxv = mngmaxv)
+
+  return(out)
+  
+})
+
 # management area patchy trend table
 mngptctab <- reactive({
   
   # inputs
   yrsel2 <- input$yrsel2
   out <- sgrctfun(mngptcests, 'Areas', yrsel = yrsel2)
+
+  return(out)
+  
+})
+
+# management area patchy map
+mngptcmap <- reactive({
+  
+  # inputs
+  yrsel2 <- input$yrsel2
+  out <- sgmapfun(mngptcests, 'Areas', yrsel = yrsel2, bndin = sgmanagement, maxv = mngmaxv)
 
   return(out)
   
@@ -180,12 +258,16 @@ selectInput('yrsel1', 'Select year comparison', choices = yrs, selected = yrs[1]
 
 ##### `r renderText(input$yrsel1)` to 2020 change {.tabset .tabset-pills} 
 
-
 ### Continous + Patchy
 
 ```{r}
 output$segcmbtab <- renderReactable(segcmbtab())
 reactableOutput('segcmbtab')
+```
+
+```{r}
+output$segcmbmap <- renderLeaflet(segcmbmap())
+leafletOutput('segcmbmap')
 ```
 
 ### Continuous
@@ -195,11 +277,21 @@ output$segcnttab <- renderReactable(segcnttab())
 reactableOutput('segcnttab')
 ```
 
+```{r}
+output$segcntmap <- renderLeaflet(segcntmap())
+leafletOutput('segcntmap')
+```
+
 ### Patchy
 
 ```{r}
 output$segptctab <- renderReactable(segptctab())
 reactableOutput('segptctab')
+```
+
+```{r}
+output$segptcmap <- renderLeaflet(segptcmap())
+leafletOutput('segptcmap')
 ```
 
 ## By management area {.tabset .tabset-pills}
@@ -217,6 +309,11 @@ output$mngcmbtab <- renderReactable(mngcmbtab())
 reactableOutput('mngcmbtab')
 ```
 
+```{r}
+output$mngcmbmap <- renderLeaflet(mngcmbmap())
+leafletOutput('mngcmbmap')
+```
+
 ### Continuous
 
 ```{r}
@@ -224,9 +321,19 @@ output$mngcnttab <- renderReactable(mngcnttab())
 reactableOutput('mngcnttab')
 ```
 
+```{r}
+output$mngcntmap <- renderLeaflet(mngcntmap())
+leafletOutput('mngcntmap')
+```
+
 ### Patchy
 
 ```{r}
 output$mngptctab <- renderReactable(mngptctab())
 reactableOutput('mngptctab')
+```
+
+```{r}
+output$mngptcmap <- renderLeaflet(mngptcmap())
+leafletOutput('mngptcmap')
 ```
