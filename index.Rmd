@@ -237,7 +237,7 @@ mngptcmap <- reactive({
 kable(seagrass, caption = 'All estimates for all segments, based on historical coverages used to report on annual progress toward recovery goals.', digits = 0)
 ```
 
-[download figure](figures/seagrasscov.png)
+[download figure](https://github.com/tbep-tech/seagrass-analysis/raw/main/figures/seagrasscov.png){target="_blank"}
 
 ```{r, out.width = '100%'}
 include_graphics('figures/seagrasscov.png')
