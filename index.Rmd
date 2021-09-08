@@ -24,7 +24,6 @@ box::use(
   shiny[...], 
   leaflet[renderLeaflet, leafletOutput],
   tidyr[spread, gather],
-  downloadthis[download_this],
   reactable[reactableOutput, renderReactable], 
   knitr[include_graphics, kable], 
   R/funcs[sgrctfun, sgmapfun]
@@ -232,15 +231,6 @@ mngptcmap <- reactive({
 ## Tampa Bay
 
 ```{r}
-download_this(seagrass, 
-  output_name = "sgests-all",
-  output_extension = ".xlsx",
-  button_label = "Download data",
-  button_type = "warning",
-  has_icon = TRUE,
-  icon = "fa fa-save" 
-  )
-
 kable(seagrass, caption = 'All estimates for all segments, based on historical coverages used to report on annual progress toward recovery goals.', digits = 0)
 ```
 
