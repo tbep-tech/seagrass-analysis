@@ -16,6 +16,8 @@ Comparisons of past years to the current year (2020) can be made for the segment
 
 <a rel='license' href='http://creativecommons.org/licenses/by/4.0/'><img alt='Creative Commons License' style='border-width:0' src='https://i.creativecommons.org/l/by/4.0/88x31.png' /></a>&nbsp;&nbsp;This application is licensed under a <a rel='license' href='http://creativecommons.org/licenses/by/4.0/'>Creative Commons Attribution 4.0 International License</a>. Please contact [Marcus Beck](mailto:mbeck@tbep.org) for more information. Source code is available [here](https://github.com/tbep-tech/seagrass-analysis).
 
+[![DOI](https://zenodo.org/badge/402824973.svg)](https://zenodo.org/badge/latestdoi/402824973)
+
 ```{r setup, message = F, warning = F, results = 'hide', echo = F}
 knitr::opts_chunk$set(echo = TRUE, warning = F, message = F, echo = F, fig.path = 'figs/', fig.path = 'figures/')
 box::use(
