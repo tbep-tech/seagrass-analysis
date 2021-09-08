@@ -92,6 +92,9 @@ segmaxv <- segcmbests %>%
 mngmaxv <- mngcmbests %>% 
   select_if(is.numeric) %>% 
   max()
+
+# leaflet height
+lfht <- 600
 ```
 
 ```{r reactives}
@@ -257,7 +260,7 @@ reactableOutput('segcmbtab')
 
 ```{r}
 output$segcmbmap <- renderLeaflet(segcmbmap())
-leafletOutput('segcmbmap')
+leafletOutput('segcmbmap', height = lfht)
 ```
 
 ### Continuous
@@ -269,7 +272,7 @@ reactableOutput('segcnttab')
 
 ```{r}
 output$segcntmap <- renderLeaflet(segcntmap())
-leafletOutput('segcntmap')
+leafletOutput('segcntmap', height = lfht)
 ```
 
 ### Patchy
@@ -281,7 +284,7 @@ reactableOutput('segptctab')
 
 ```{r}
 output$segptcmap <- renderLeaflet(segptcmap())
-leafletOutput('segptcmap')
+leafletOutput('segptcmap', height = lfht)
 ```
 
 ## By management area {.tabset .tabset-pills}
@@ -301,7 +304,7 @@ reactableOutput('mngcmbtab')
 
 ```{r}
 output$mngcmbmap <- renderLeaflet(mngcmbmap())
-leafletOutput('mngcmbmap')
+leafletOutput('mngcmbmap', height = lfht)
 ```
 
 ### Continuous
@@ -313,7 +316,7 @@ reactableOutput('mngcnttab')
 
 ```{r}
 output$mngcntmap <- renderLeaflet(mngcntmap())
-leafletOutput('mngcntmap')
+leafletOutput('mngcntmap', height = lfht)
 ```
 
 ### Patchy
@@ -325,5 +328,5 @@ reactableOutput('mngptctab')
 
 ```{r}
 output$mngptcmap <- renderLeaflet(mngptcmap())
-leafletOutput('mngptcmap')
+leafletOutput('mngptcmap', height = lfht)
 ```

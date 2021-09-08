@@ -142,10 +142,10 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
       weight = 1, 
       layerId = ~bnds, 
       fillColor = ~fillhx, 
-      fillOpacity = 0.7,
+      fillOpacity = 0.8,
       label = ~paste0(bnds, ': ', round(fillv, 0), ' acres')
     ) %>% 
-    addLegend("topright", pal = colfun, values = vls, title = paste(yrsel, 'acres'), opacity = 1)  
+    addLegend("topright", pal = colfun, values = vls, title = paste(yrsel, 'acres'), opacity = 0.8)  
 
   return(out)
   
