@@ -1,6 +1,8 @@
 ---
 output: 
-  html_document
+  html_document:
+    includes:
+      in_header: google-analytics.html
 title: "Seagrass coverage estimates"
 css: styles.css
 runtime: shiny

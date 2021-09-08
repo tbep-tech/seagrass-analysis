@@ -138,7 +138,7 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
     addPolygons(
       data = tomap, 
       stroke = T, 
-      color = 'grey',
+      color = 'black',
       weight = 1, 
       layerId = ~bnds, 
       fillColor = ~fillhx, 
