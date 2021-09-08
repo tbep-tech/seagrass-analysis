@@ -1,20 +1,34 @@
 #' @export
-sgrctfun <- function(sums, colnm, yrsel = '1988', topyr = '2020', firstwidth = 240){
-  browser()
+sgrctfun <- function(datin, colnm, yrsel = '1988', topyr = '2020', firstwidth = 150){
+
+  box::use(
+    dplyr[...], 
+    reactable[...]
+  )
+
   sticky_style <- list(position = "sticky", left = 0, background = "#fff", zIndex = 1,
                        borderRight = "1px solid #eee")
   
   jsfun <- JS("function(rowInfo) {
-  var value = rowInfo.row.chg
-  if (parseInt(value) >= 0) {
-    var color = '#008000E6'
-  } else if (parseInt(value) < 0) {
-    var color = '#e00000E6'
-  } 
-  return { color: color, fontWeight: 'bold' }
-  }"
+    var value = rowInfo.row.chg
+    if (parseInt(value) >= 0) {
+      var color = '#008000E6'
+    } else if (parseInt(value) < 0) {
+      var color = '#e00000E6'
+    } 
+    return { color: color, fontWeight: 'bold' }
+    }"
   )
   
+  sums <- datin %>%
+    rename(chgyr = !!yrsel) %>% 
+    mutate(
+      chg = `2020` -  chgyr,
+      chgper = 100 * (`2020` - chgyr) / chgyr
+    ) %>% 
+    rename(val = !!colnm)
+  names(sums)[names(sums) == 'chgyr'] <- yrsel
+
   totab <- sums %>% 
     mutate(
       chg = formatC(round(chg, 0), format = "d", big.mark = ","),

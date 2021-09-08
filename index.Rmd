@@ -13,22 +13,21 @@ Source code here: https://github.com/tbep-tech/seagrass-analysis
 ```{r setup, message = F, warning = F, results = 'hide', echo = F}
 knitr::opts_chunk$set(echo = TRUE, warning = F, message = F, echo = F, fig.path = 'figs/', fig.path = 'figures/')
 box::use(
-  units[set_units], 
-  dplyr[...],
-  tidyr[spread, gather],
-  sf[st_read, st_set_geometry, st_intersection, st_transform, st_crs, st_area], 
-  downloadthis[download_this],
   here[...], 
-  reactable[...], 
+  dplyr[...],
   shiny[...], 
-  ./R/funcs
+  tidyr[spread, gather],
+  downloadthis[download_this],
+  reactable[reactableOutput, renderReactable], 
+  knitr[include_graphics, kable], 
+  R/funcs[sgrctfun]
 )
 data(file = 'seagrass', package = 'tbeptools')
 data(file = 'sgseg', package = 'tbeptools')
 load(file = here('data/allsegests.RData'))
 load(file = here('data/allmngests.RData'))
 
-# year to select
+# years to select
 yrs <- unique(allsegests$yr) %>% 
   sort %>% 
   .[1:(length(.) - 1)]
@@ -77,35 +76,74 @@ mngcntests <- allmngests %>%
 ```
 
 ```{r reactives}
-# segment trend table
+# segment cont trend table
+segcnttab <- reactive({
+  
+  # inputs
+  yrsel1 <- input$yrsel1
+  out <- sgrctfun(segcntests, 'Segment', yrsel = yrsel1)
+
+  return(out)
+  
+})
+
+# segment patchy trend table
+segptctab <- reactive({
+  
+  # inputs
+  yrsel1 <- input$yrsel1
+  out <- sgrctfun(segptcests, 'Segment', yrsel = yrsel1)
+
+  return(out)
+  
+})
+
+# segment combined trend table
 segcmbtab <- reactive({
   
   # inputs
-  yrsel <- input$yrsel
-  sums <- segcmbests %>%
-    rename(chgyr = !!yrsel) %>% 
-    mutate(
-      chg = `2020` -  chgyr,
-      chgper = 100 * (`2020` - chgyr) / chgyr
-    )
+  yrsel1 <- input$yrsel1
+  out <- sgrctfun(segcmbests, 'Segment', yrsel = yrsel1)
+
+  return(out)
   
-  names(sums)[names(sums) == 'chgyr'] <- yrsel
-  out <- funcs$sgrctfun(sums, 'Segment', yrsel = yrsel, topyr = '2020')
+})
+
+# management area cont trend table
+mngcnttab <- reactive({
+  
+  # inputs
+  yrsel2 <- input$yrsel2
+  out <- sgrctfun(mngcntests, 'Areas', yrsel = yrsel2)
+
+  return(out)
+  
+})
+
+# management area patchy trend table
+mngptctab <- reactive({
+  
+  # inputs
+  yrsel2 <- input$yrsel2
+  out <- sgrctfun(mngptcests, 'Areas', yrsel = yrsel2)
+
+  return(out)
+  
+})
+
+# management area combined trend table
+mngcmbtab <- reactive({
+  
+  # inputs
+  yrsel2 <- input$yrsel2
+  out <- sgrctfun(mngcmbests, 'Areas', yrsel = yrsel2)
 
   return(out)
   
 })
 ```
 
-```{r}
-selectInput('yrsel', 'Select year comparison', choices = yrs, selected = yrs[1])
-```
-
-##### `r renderText(input$yrsel)` to 2020 change {.tabset .tabset-pills} 
-
-## Combined patchy/continuous {.tabset}
-
-### Combined annual 
+## Tampa Bay
 
 ```{r}
 download_this(seagrass, 
@@ -117,24 +155,69 @@ download_this(seagrass,
   icon = "fa fa-save" 
   )
 
-knitr::kable(seagrass, caption = 'All estimates for all segments, based on historical coverages used to report on annual progress toward recovery goals.')
+kable(seagrass, caption = 'All estimates for all segments, based on historical coverages used to report on annual progress toward recovery goals.', digits = 0)
 ```
 
 [download figure](figures/seagrasscov.png)
 
 ```{r, out.width = '100%'}
-knitr::include_graphics(here('figures/seagrasscov.png'))
+include_graphics('figures/seagrasscov.png')
 ```
 
-### By bay segment
+## By segment {.tabset}
+
+```{r}
+selectInput('yrsel1', 'Select year comparison', choices = yrs, selected = yrs[1])
+```
+
+##### `r renderText(input$yrsel1)` to 2020 change {.tabset .tabset-pills} 
+
+### Continuous {.tabset}
+
+```{r}
+output$segcnttab <- renderReactable(segcnttab())
+reactableOutput('segcnttab')
+```
+
+### Patchy
+
+```{r}
+output$segptctab <- renderReactable(segptctab())
+reactableOutput('segptctab')
+```
+
+### Continous + Patchy
 
 ```{r}
 output$segcmbtab <- renderReactable(segcmbtab())
 reactableOutput('segcmbtab')
 ```
 
-## Separate patchy/continuous {.tabset}
+## By management area {.tabset}
 
-### Combined annual
+```{r}
+selectInput('yrsel2', 'Select year comparison', choices = yrs, selected = yrs[1])
+```
 
-### By bay segment
+##### `r renderText(input$yrsel2)` to 2020 change {.tabset .tabset-pills} 
+
+### Continuous {.tabset}
+
+```{r}
+output$mngcnttab <- renderReactable(mngcnttab())
+reactableOutput('mngcnttab')
+```
+
+### Patchy
+
+```{r}
+output$mngptctab <- renderReactable(mngptctab())
+reactableOutput('mngptctab')
+```
+
+### Continous + Patchy
+
+```{r}
+output$mngcmbtab <- renderReactable(mngcmbtab())
+reactableOutput('mngcmbtab')
+```
