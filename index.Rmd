@@ -14,7 +14,7 @@ This application provides a summary of seagrass areal coverage estimates for Tam
 
 The Tampa Bay tab provides a summary for the entire bay using historical estimates for past years.  Due to changes in the segment boundaries and updates to the historical coverage layers, these summaries may differ slightly from the total acreages provides in the segment and management area tabs.    
 
-Comparisons of past years to the current year (2020) can be made for the segment and management area tabs by selecting a prior year from the dropdown menu.  Note that the nominal year for each layer provides a snapshot estimate of coverage from aerial photos taken at the end of the growing season for the year prior.  For example, the 2020 layer was based on images obtained in December 2019.  
+Comparisons of past years to the current year (2020) can be made for the segment and management area tabs by selecting a prior year from the dropdown menu.  Note that the nominal year for each layer provides a snapshot estimate of coverage from aerial photos taken at the end of the growing season for the year prior.  For example, the 2020 layer was based on images obtained in December 2019.  Historical coverages for 1950 and 1982 are only available for the continuous + patchy segment tab.
 
 <a rel='license' href='http://creativecommons.org/licenses/by/4.0/'><img alt='Creative Commons License' style='border-width:0' src='https://i.creativecommons.org/l/by/4.0/88x31.png' /></a>&nbsp;&nbsp;This application is licensed under a <a rel='license' href='http://creativecommons.org/licenses/by/4.0/'>Creative Commons Attribution 4.0 International License</a>. Please contact [Marcus Beck](mailto:mbeck@tbep.org) for more information. Source code is available [here](https://github.com/tbep-tech/seagrass-analysis).
 
@@ -41,7 +41,8 @@ load(file = here('data/allmngests.RData'))
 # years to select
 yrs <- unique(allsegests$yr) %>% 
   sort %>% 
-  .[1:(length(.))]
+  .[1:(length(.))] %>% 
+  c('1950', '1982', .)
 
 # combined segment estimates
 segcmbests <- allsegests %>% 
@@ -52,6 +53,14 @@ segcmbests <- allsegests %>%
     .groups = 'drop'
     ) %>% 
   spread(yr, Acres, fill = 0)
+segcmbhst <- tibble(
+    Segment = c("Boca Ciega Bay", "Hillsborough Bay", "Lower Tampa Bay", "Manatee River", 
+                "Middle Tampa Bay", "Old Tampa Bay", "Terra Ceia Bay"),
+    `1950` = c(10800, 2300, 6100, 200, 9600, 10700, 700), 
+    `1982` = c(5770, 0, 5016, 131, 4042, 5943, 751)
+  )
+segcmbests <- segcmbhst %>% 
+  full_join(segcmbests, by = 'Segment')
 
 # patchy segment estimates
 segptcests <- allsegests %>% 
