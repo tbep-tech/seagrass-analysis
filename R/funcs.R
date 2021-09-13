@@ -96,7 +96,8 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
     mapview[...], 
     leaflet[...], 
     dplyr[...], 
-    leafem[removeMouseCoordinates]
+    leafem[removeMouseCoordinates], 
+    sf[st_transform]
   )
   
   colnm <- match.arg(colnm)
@@ -125,7 +126,8 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
     mutate(
       fillhx = colfun(fillv)
     ) %>% 
-    full_join(toint, ., by = 'bnds')
+    full_join(toint, ., by = 'bnds') %>% 
+    st_transform(crs = 4326)
   
   # values for legend
   vls <- seq(0, maxv, length.out = 10)

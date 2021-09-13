@@ -19,8 +19,8 @@ bnds <- sgseg %>%
 mngs <- sgmanagement
 
 flcat <- list(
-  code = c('7210', '9113', '9116', '9121'),
-  name = c('sand', 'patchy', 'cont.', 'algae')
+  code = c('9113', '9116'),
+  name = c('patchy', 'cont.')
 )
 
 # estimates by segments ---------------------------------------------------
