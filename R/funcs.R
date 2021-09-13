@@ -1,5 +1,5 @@
 #' @export
-sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel = '1988', topyr = '2020', firstwidth = 150){
+sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 150){
 
   box::use(
     dplyr[...], 
@@ -24,21 +24,23 @@ sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel = '1988', topyr
     return { color: color, fontWeight: 'bold' }
     }"
   )
-  
-  # calc diffs if yrsel not equal to topyr  
-  if(yrsel != topyr & yrsel %in% yrs){
+
+  # calc diffs if both yrsel present
+  if(sum(yrsel %in% yrs) == 2 & yrsel[1] != yrsel[2]){
     sums <- datin %>%
-      rename(chgyr = !!yrsel) %>% 
+      rename(chgyr1 = !!yrsel[1]) %>% 
+      rename(chgyr2 = !!yrsel[2]) %>% 
       mutate(
-        chg = `2020` -  chgyr,
-        chgper = 100 * (`2020` - chgyr) / chgyr
+        chg = chgyr2 - chgyr1,
+        chgper = 100 * (chgyr2 - chgyr1) / chgyr1
       ) %>% 
       rename(val = !!colnm)
-    names(sums)[names(sums) == 'chgyr'] <- yrsel
+    names(sums)[names(sums) == 'chgyr1'] <- yrsel[1]
+    names(sums)[names(sums) == 'chgyr2'] <- yrsel[2]
   }
-  
-  # NA if yrsel equal topyr
-  if(yrsel == topyr | !yrsel %in% yrs){
+
+  # NA if yrsel is equal or missing a yrsel
+  if(yrsel[1] == yrsel[2] | any(!yrsel %in% yrs)){
     sums <- datin %>% 
       mutate(
         chg = NA, 
@@ -58,7 +60,7 @@ sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel = '1988', topyr
     totab, 
     columns = list(
       val = colDef(name = colnm, footer = 'Total', minWidth = firstwidth, class = 'sticky left-col-1-bord', headerClass = 'sticky left-col-1-bord', footerClass = 'sticky left-col-1-bord'), 
-      chg = colDef(name = paste0(yrsel, '-', topyr, ' change'), minWidth = 140,
+      chg = colDef(name = paste0(yrsel[1], '-', yrsel[2], ' change'), minWidth = 140,
                    style = jsfun, class = 'sticky right-col-2', headerClass = 'sticky right-col-2', footerClass = 'sticky right-col-2'
       ), 
       chgper = colDef(name = '% change', minWidth = 85,

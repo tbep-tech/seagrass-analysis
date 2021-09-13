@@ -26,6 +26,7 @@ box::use(
   here[...], 
   dplyr[...],
   shiny[...], 
+  shinyWidgets[sliderTextInput],
   leaflet[renderLeaflet, leafletOutput],
   tidyr[spread, gather],
   reactable[reactableOutput, renderReactable], 
@@ -259,10 +260,10 @@ include_graphics('figures/seagrasscov.png')
 ## By segment {.tabset .tabset-pills}
 
 ```{r}
-selectInput('yrsel1', 'Select year comparison', choices = yrs, selected = yrs[1])
+sliderTextInput('yrsel1', 'Select year comparison', choices = yrs, grid = T, width = '600px', selected = c(yrs[1], rev(yrs)[1]))
 ```
 
-##### `r renderText(input$yrsel1)` to 2020 change {.tabset .tabset-pills} 
+##### `r renderText(input$yrsel1[1])` to `r renderText(input$yrsel1[2])` change {.tabset .tabset-pills} 
 
 ### Continous + Patchy
 
@@ -303,10 +304,10 @@ leafletOutput('segptcmap', height = lfht)
 ## By management area {.tabset .tabset-pills}
 
 ```{r}
-selectInput('yrsel2', 'Select year comparison', choices = yrs, selected = yrs[1])
+sliderTextInput('yrsel2', 'Select year comparison', choices = yrs, grid = T, width = '600px', selected = c(yrs[1], rev(yrs)[1]))
 ```
 
-##### `r renderText(input$yrsel2)` to 2020 change {.tabset .tabset-pills} 
+##### `r renderText(input$yrsel2[1])` to `r renderText(input$yrsel2[2])` change {.tabset .tabset-pills} 
 
 ### Continous + Patchy
 
