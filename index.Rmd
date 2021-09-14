@@ -29,7 +29,7 @@ box::use(
   tidyr[spread, gather],
   reactable[reactableOutput, renderReactable], 
   knitr[include_graphics, kable], 
-  R/funcs[sgrctfun, sgmapfun]
+  R/funcs[sgrctfun, sgmapfun, sgchgfun]
 )
 data(file = 'seagrass', package = 'tbeptools')
 data(file = 'sgseg', package = 'tbeptools')
@@ -95,15 +95,27 @@ mngcntests <- allmngests %>%
   select(yr, Areas, Acres) %>% 
   spread(yr, Acres, fill = 0)
 
-# max segment value
+# max segment diff
 segmaxv <- segcmbests %>% 
-  select_if(is.numeric) %>% 
-  max()
+  select(-Segment) %>% 
+  mutate(
+    maxv = do.call(pmax, .), 
+    minv = do.call(pmin, .), 
+    rng = maxv - minv
+  ) %>% 
+  pull(rng) %>% 
+  max
 
-# max management value
+# max management diff
 mngmaxv <- mngcmbests %>% 
-  select_if(is.numeric) %>% 
-  max()
+  select(-Areas) %>% 
+  mutate(
+    maxv = do.call(pmax, .), 
+    minv = do.call(pmin, .), 
+    rng = maxv - minv
+  ) %>% 
+  pull(rng) %>% 
+  max
 
 # leaflet height
 lfht <- 600
@@ -261,8 +273,6 @@ include_graphics('figures/seagrasscov.png')
 sliderTextInput('yrsel1', 'Select year comparison', choices = yrs, grid = T, width = '600px', selected = c(yrs[1], rev(yrs)[1]))
 ```
 
-##### `r renderText(input$yrsel1[1])` to `r renderText(input$yrsel1[2])` change {.tabset .tabset-pills} 
-
 ### Continous + Patchy
 
 ```{r}
@@ -304,8 +314,6 @@ leafletOutput('segptcmap', height = lfht)
 ```{r}
 sliderTextInput('yrsel2', 'Select year comparison', choices = yrs, grid = T, width = '600px', selected = c(yrs[1], rev(yrs)[1]))
 ```
-
-##### `r renderText(input$yrsel2[1])` to `r renderText(input$yrsel2[2])` change {.tabset .tabset-pills} 
 
 ### Continous + Patchy
 

@@ -1,4 +1,42 @@
 #' @export
+sgchgfun <- function(datin, yrsel, colnm){
+  
+  box::use(
+    dplyr[...]
+  )
+  
+  # yrs in input data
+  yrs <- names(datin)[!names(datin) %in% colnm] 
+  
+  # calc diffs if both yrsel present
+  if(sum(unique(yrsel) %in% yrs) == 2){
+    out <- datin %>%
+      rename(chgyr1 = !!yrsel[1]) %>% 
+      rename(chgyr2 = !!yrsel[2]) %>% 
+      mutate(
+        chg = chgyr2 - chgyr1,
+        chgper = 100 * (chgyr2 - chgyr1) / chgyr1
+      ) %>% 
+      rename(val = !!colnm)
+    names(out)[names(out) == 'chgyr1'] <- yrsel[1]
+    names(out)[names(out) == 'chgyr2'] <- yrsel[2]
+  }
+  
+  # NA if yrsel is equal or missing a yrsel
+  if(yrsel[1] == yrsel[2] | any(!yrsel %in% yrs)){
+    out <- datin %>% 
+      mutate(
+        chg = NA, 
+        chgper = NA
+      ) %>% 
+      rename(val = !!colnm)
+  }
+  
+  return(out)
+  
+}
+
+#' @export
 sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 150){
 
   box::use(
@@ -7,10 +45,7 @@ sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 1
   )
 
   colnm <- match.arg(colnm)
-  
-  # yrs in input data
-  yrs <- names(datin)[!names(datin) %in% colnm] 
-  
+
   sticky_style <- list(position = "sticky", left = 0, background = "#fff", zIndex = 1,
                        borderRight = "1px solid #eee")
   
@@ -25,30 +60,10 @@ sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 1
     }"
   )
 
-  # calc diffs if both yrsel present
-  if(sum(yrsel %in% yrs) == 2 & yrsel[1] != yrsel[2]){
-    sums <- datin %>%
-      rename(chgyr1 = !!yrsel[1]) %>% 
-      rename(chgyr2 = !!yrsel[2]) %>% 
-      mutate(
-        chg = chgyr2 - chgyr1,
-        chgper = 100 * (chgyr2 - chgyr1) / chgyr1
-      ) %>% 
-      rename(val = !!colnm)
-    names(sums)[names(sums) == 'chgyr1'] <- yrsel[1]
-    names(sums)[names(sums) == 'chgyr2'] <- yrsel[2]
-  }
-
-  # NA if yrsel is equal or missing a yrsel
-  if(yrsel[1] == yrsel[2] | any(!yrsel %in% yrs)){
-    sums <- datin %>% 
-      mutate(
-        chg = NA, 
-        chgper = NA
-      ) %>% 
-      rename(val = !!colnm)
-  }
+  # get change summary
+  sums <- sgchgfun(datin, yrsel, colnm)
   
+  # format for table 
   totab <- sums %>% 
     mutate(
       chg = formatC(round(chg, 0), format = "d", big.mark = ","),
@@ -107,11 +122,14 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
   
   colnm <- match.arg(colnm)
   
-  # color palette function
+  # colors
+  colgrn <- c("#F7FCF5", "#E5F5E0", "#C7E9C0", "#A1D99B", "#74C476", "#41AB5D", 
+               "#238B45", "#006D2C", "#00441B")
+  colred <- c("#FFF5F0", "#FEE0D2", "#FCBBA1", "#FC9272", "#FB6A4A", "#EF3B2C", 
+              "#CB181D", "#A50F15", "#67000D")               
   colfun <- colorNumeric(
-    palette = c("#F7FCF5", "#E5F5E0", "#C7E9C0", "#A1D99B", "#74C476", "#41AB5D", 
-                "#238B45", "#006D2C", "#00441B"),
-    domain = c(0, maxv)
+    palette = c(rev(colred), colgrn),
+    domain = c(-1 * maxv, maxv)
     )
   
   # rename polygons to common
@@ -121,48 +139,50 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
   toint <- bndin %>% 
     filter(bnds %in% unique(datin[[colnm]]))
 
-  # empty base mape
+  # empty base map
   mapin <- mapview(toint, homebutton = F, popup = NULL, legend = F) %>% 
     .@map %>% 
     removeMouseCoordinates() %>% 
     clearShapes()
 
+  # get change summary
+  sums <- sgchgfun(datin, yrsel, colnm)
+
   # empty map if selected year is unavailable
-  if(!yrsel %in% names(datin))
+  if(anyNA(sums$chg))
     out <- mapin
   
   # plot if selected year is available
-  if(yrsel %in% names(datin)){
-  
+  if(!anyNA(sums$chg)){
+
     # estimates to map
-    tomap <- datin %>% 
-      select(!!colnm, !!yrsel) %>% 
+    tomap <- sums %>% 
+      select(val, chg) %>% 
       rename(
-        bnds = !!colnm, 
-        fillv = !!yrsel
-      ) %>% 
-      mutate(
-        fillhx = colfun(fillv)
+        bnds = val
       ) %>% 
       full_join(toint, ., by = 'bnds') %>% 
+      mutate(
+        fillhx = colfun(chg)
+      ) %>% 
       st_transform(crs = 4326)
     
     # values for legend
-    vls <- seq(0, maxv, length.out = 10)
-  
+    vls <- seq(-1 * maxv, maxv, length.out = 10)
+
     # map
     out <- mapin %>% 
       addPolygons(
-        data = tomap, 
-        stroke = T, 
+        data = tomap,
+        stroke = T,
         color = 'black',
-        weight = 1, 
-        layerId = ~bnds, 
-        fillColor = ~fillhx, 
+        weight = 1,
+        layerId = ~bnds,
+        fillColor = ~fillhx,
         fillOpacity = 0.8,
-        label = ~paste0(bnds, ': ', round(fillv, 0), ' acres')
+        label = ~paste0(bnds, ': ', round(chg, 0), ' acres')
       ) %>% 
-      addLegend("topright", pal = colfun, values = vls, title = paste(yrsel, 'acres'), opacity = 0.8)  
+      addLegend("topright", pal = colfun, values = vls, title = paste0(yrsel[1], '-', yrsel[2], ' change'), opacity = 0.8)  
 
   }
   
