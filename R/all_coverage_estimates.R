@@ -13,8 +13,7 @@ data(file = 'sgseg', package = 'tbeptools')
 data(file = 'sgmanagement', package = 'tbeptools')
 
 bnds <- sgseg %>% 
-  filter(segment %in% c('Boca Ciega Bay', 'Hillsborough Bay', 'Old Tampa Bay', 'Middle Tampa Bay',
-                        'Lower Tampa Bay', 'Manatee River', 'Terra Ceia Bay'))
+  filter(!segment %in% c('Gulf of Mexico'))
 
 mngs <- sgmanagement
 

@@ -18,9 +18,8 @@ prj <- 2882
 # import seagrass layers from source --------------------------------------
 
 # tb segment boundaries
-tbsgseg <- sgseg %>% 
-  filter(segment %in% c('Old Tampa Bay', 'Hillsborough Bay', 'Middle Tampa Bay', 'Lower Tampa Bay', 'Terra Ceia Bay', 
-                         'Manatee River','Boca Ciega Bay')) %>% 
+bndseg <- sgseg %>% 
+  filter(!segment %in% c('Gulf of Mexico')) %>% 
   st_union() %>% 
   st_buffer(dist = 0) %>% 
   st_geometry() %>%
@@ -36,7 +35,7 @@ tbsgmng <- sgmanagement %>%
   st_buffer(dist = 0) 
   
 # combine tb boundaries and management areas
-tbbnds <- st_union(tbsgmng, tbsgseg) %>% 
+bnds <- st_union(tbsgmng, bndseg) %>% 
   st_union() %>% 
   st_buffer(dist = 0) %>% 
   st_geometry() %>%
@@ -77,7 +76,7 @@ for(i in 1:length(fls)){
     st_transform(crs = prj) %>%
     dplyr::select(FLUCCSCODE) %>% 
     filter(FLUCCSCODE %in% c('9113', '9116')) %>%
-    st_intersection(tbbnds)
+    st_intersection(bnds)
   
   # name assignment and save
   flnm <- gsub('^sg|\\.zip$', '', basename(fls[i])) %>% 

@@ -97,10 +97,13 @@ mngcntests <- allmngests %>%
 
 # max segment diff
 segmaxv <- segcmbests %>% 
-  select(-Segment) %>% 
+  gather('var', 'val', -Segment) %>% 
+  group_by(Segment) %>% 
+  summarise(
+    maxv = max(val, na.rm = T), 
+    minv = min(val, na.rm = T)
+  ) %>% 
   mutate(
-    maxv = do.call(pmax, .), 
-    minv = do.call(pmin, .), 
     rng = maxv - minv
   ) %>% 
   pull(rng) %>% 
@@ -108,10 +111,13 @@ segmaxv <- segcmbests %>%
 
 # max management diff
 mngmaxv <- mngcmbests %>% 
-  select(-Areas) %>% 
+  gather('var', 'val', -Areas) %>% 
+  group_by(Areas) %>% 
+  summarise(
+    maxv = max(val, na.rm = T), 
+    minv = min(val, na.rm = T)
+  ) %>% 
   mutate(
-    maxv = do.call(pmax, .), 
-    minv = do.call(pmin, .), 
     rng = maxv - minv
   ) %>% 
   pull(rng) %>% 

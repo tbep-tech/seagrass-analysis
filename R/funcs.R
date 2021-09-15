@@ -119,7 +119,7 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
     leafem[removeMouseCoordinates], 
     sf[st_transform]
   )
-  
+
   colnm <- match.arg(colnm)
   
   # colors
