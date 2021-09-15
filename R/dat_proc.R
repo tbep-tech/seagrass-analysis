@@ -7,6 +7,7 @@ library(sf)
 library(tidyverse)
 library(httr)
 library(XML)
+library(raster)
 
 data(sgseg)
 data(sgmanagement)
@@ -14,6 +15,13 @@ data(sgmanagement)
 # NAD83(HARN) / Florida West (ftUS)
 # this is the projection for the seagrass segment layer from the district
 prj <- 2882
+
+# dem data ----------------------------------------------------------------
+
+# # https://www.ngdc.noaa.gov/mgg/bathymetry/estuarine/
+# dem <- raster('~/Desktop/TBEP/tampa_bay_G070_2017.nc')
+# dem <- readAll(dem)
+# save(dem, file = 'data/dem.RData', compress = 'xz')
 
 # import seagrass layers from source --------------------------------------
 
