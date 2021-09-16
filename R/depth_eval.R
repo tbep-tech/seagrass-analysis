@@ -4,6 +4,7 @@ library(tbeptools)
 library(mapview)
 library(units)
 library(stars)
+library(raster)
 
 data(dem)
 data(sgseg)
@@ -24,6 +25,7 @@ bnds <- sgseg %>%
 prj4 <- '+proj=tmerc +lat_0=24.33333333333333 +lon_0=-82 +k=0.999941177 +x_0=200000.0001016002 +y_0=0 +ellps=GRS80 +to_meter=0.3048006096012192 +no_defs'
 demprj <- projectRaster(dem, crs = prj4)
 demstr <- st_as_stars(demprj)
+
 # 2020 data
 maxdat <- sgdat2020 %>% 
   st_union(by_feature = TRUE) %>%
@@ -32,11 +34,6 @@ maxdat <- sgdat2020 %>%
     Category = paste0(Category, ', 2020')
   )
 
-# current year, add coastal stratum
-a <- inds %>% 
-  filter(yr == !!yr) %>% 
-  pull(data)
-load(file = here('data/', a))
 a <- sgdat2018 %>% 
   left_join(fluccs, by = 'FLUCCSCODE') %>%
   st_union(by_feature = TRUE) %>%
@@ -85,8 +82,8 @@ union <- bind_rows(op1, op2, op3) %>%
     Acres = set_units(Acres, 'acres'),
     Acres = as.numeric(Acres)
   ) %>%
-  select(Category.1, Category, Acres) %>%
-  select(source = Category, target = Category.1, value = Acres)
+  dplyr::select(Category.1, Category, Acres) %>%
+  dplyr::select(source = Category, target = Category.1, value = Acres)
 
 chgdat <- union %>% 
   filter(target == 'other, 2020' | source == 'other, 2018') %>% 
@@ -99,10 +96,12 @@ chgdat <- union %>%
 
 mapview::mapview(chgdat, zcol = 'var')
 
+chgdat <- chgdat %>% 
+  st_transform(crs = prj4)
 
-st_extract(demstr, chgdat)
+tmp <- aggregate(demstr, chgdat, mean)
 
-# tmp <- st_intersection(chgdat, bnds) %>% 
+?# tmp <- st_intersection(chgdat, bnds) %>% 
 #   st_set_geometry(NULL) %>% 
 #   group_by(segment, var) %>% 
 #   summarise(
