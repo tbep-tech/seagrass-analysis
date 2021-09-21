@@ -5,7 +5,7 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
 
-This file evaluates seagrass gains and losses in coverage from 2018 to 2020.  The goal is to characterize the distribution of depth estimates for areas where changes have occurred.  A hypothesis is that seagrass may be lost at deeper depths as compared to where it was gained, possibly related to changes in water clarity that can cause seagrass to grow in more shallow areas where they are less light limited.
+This file evaluates seagrass gains and losses in coverage from 2018 to 2020.  The goal is to characterize the distribution of depth estimates for areas where changes have occurred.  A hypothesis is that seagrass may be lost at deeper depths as compared to where it was gained, possibly related to changes in water clarity that can cause seagrass to grow in more shallow areas where they are less light limited. Source content is [here](https://github.com/tbep-tech/seagrass-analysis).
 
 The analysis is in several steps:
 
@@ -148,11 +148,12 @@ load(file = here('data/chgdat.RData'))
 chgdat
 ```
 
-```{r, out.width = '100%', out.height = '600px'}
+```{r, out.width = '100%', out.height = '800px'}
 m <- mapview(dem, layer.name = 'Depth (m)') + mapview(chgdat, zcol = 'var', layer.name = 'Seagrass', col.regions = c("#F8766D", "#00BFC4"))
 m
 ```
 
+<br>
 The `chgdat` layer (gained/lost) is aggregated by taking the average of the cells from the bathymetry layer that are within each polygon.  Polygons are removed that have no mean depth estimate because they are on the boundary or outside of the bathymetry layer. This also takes a while and is not rendered in this file.
 
 ```{r, eval = F}
@@ -184,14 +185,6 @@ chgdatarea <- chgdatarea %>%
 chgdatarea
 ```
 
-The polygon boundaries are shown below (segments left, management areas right). 
-
-```{r, out.width = '100%'}
-m1 <- mapview(tbseg, legend = F, layer.name = 'Bay segments')
-m2 <- mapview(sgmanagement, legend = F, layer.name = 'Management areas')
-sync(m1, m2)
-```
-
 The plot below shows the cumulative distribution of acres lost and gained by major bay segments.
 
 ```{r, fig.height = 3, fig.width = 9}
@@ -201,11 +194,16 @@ ggplot(chgdatarea, aes(x = meandepth, color = var)) +
   theme_minimal() +
   labs(
     color = NULL,
-    x = 'Mean depth below MWWL (m)', 
+    x = 'Mean depth below MLLW (m)', 
     y = 'ECDF'
   )
 ```
 
+```{r, out.width = '100%', out.height = '800px'}
+mapview(tbseg, legend = F, layer.name = 'Bay segments')
+```
+ 
+<br>
 The plot below shows the cumulative distribution of acres lost and gained by major bay segments and seagrass management areas.
 
 ```{r, fig.height = 10, fig.width = 10}
@@ -215,7 +213,12 @@ ggplot(chgdatarea, aes(x = meandepth, color = var)) +
   theme_minimal() +
   labs(
     color = NULL,
-    x = 'Mean depth below MWWL (m)', 
+    x = 'Mean depth below MLLW (m)', 
     y = 'ECDF'
   )
 ```
+
+```{r, out.width = '100%', out.height = '800px'}
+mapview(sgmanagement, legend = F, layer.name = 'Management areas', zcol = NULL)
+```
+
