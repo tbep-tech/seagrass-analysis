@@ -9,13 +9,13 @@ This file evaluates seagrass gains and losses in coverage from 2018 to 2020.  Th
 
 The analysis is in several steps:
 
-1. A change analysis between 2018 and 2020 to identify areas where seagrass occurred in 2018 but not in 2020 (lost) and areas where seagrass did not occur in 2018 but did occur in 2020.  
+1. A change analysis between 2018 and 2020 to identify areas where seagrass occurred in 2018 but not in 2020 (loss) and areas where seagrass did not occur in 2018 but did occur in 2020 (gain).  
 1. A bathymetry layer is then used to estimate the average depth, as meters below MLLW, for each polygon identified as lost or gained.  
 1. The summarized polygons are then intersected with bay segment and seagrass management areas to evaluate potential changes by major areas in the bay.  
 
 First, the relevant libraries and datasets are imported.  All analyses are conducted using the NAD83(HARN) / Florida West (ftUS) projection. 
 
-```{r setup, include = FALSE, message = F, warning = F}
+```{r setup, echo = T, message = F, warning = F}
 knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
 
 library(sf)
@@ -154,7 +154,7 @@ m
 ```
 
 <br>
-The `chgdat` layer (gained/lost) is aggregated by taking the average of the cells from the bathymetry layer that are within each polygon.  Polygons are removed that have no mean depth estimate because they are on the boundary or outside of the bathymetry layer. This also takes a while and is not rendered in this file.
+Next, average depth for each polygon is esimated from the bathymetry layer. The `chgdat` layer (gained/lost) is aggregated by taking the average of the cells from the bathymetry layer that are within each polygon.  Polygons are removed that have no mean depth estimate because they are on the boundary or outside of the bathymetry layer. This also takes a while and is not rendered in this file.
 
 ```{r, eval = F}
 chgdatarea <- chgdat %>% 
