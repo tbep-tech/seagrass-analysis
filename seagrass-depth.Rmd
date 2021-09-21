@@ -1,0 +1,190 @@
+---
+output: html_document
+---
+
+# Seagrass changes by depth, 2018 to 2020
+
+This file evaluates seagrass gains and losses in coverage from 2018 to 2020.  The goal is to characterize the distribution of depth estimates for areas where changes have occurred.  A hypothesis is that seagrass may be lost at deeper depths as compared to where it was gained, possibly related to changes in water clarity that can cause seagrass to grow in more shallow areas where they are less light limited.
+
+The analysis is in several steps:
+
+1. A change analysis between 2018 and 2020 to identify areas where seagrass occurred in 2018 but not in 2020 (lost) and areas where seagrass did not occur in 2018 but did occur in 2020.  
+1. A bathymetry layer is then used to estimate the average depth, as meters below MLLW, for each polygon identified as lost or gained.  
+1. The summarized polygons are then intersected with bay segment and seagrass management areas to evaluate potential changes by major areas in the bay.  
+
+First, the relevant libraries and datasets are imported.  All analyses are conducted using the NAD83(HARN) / Florida West (ftUS) projection. 
+
+```{r setup, include = FALSE, message = F, warning = F}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(sf)
+library(tidyverse)
+library(tbeptools)
+library(mapview)
+library(units)
+library(stars)
+library(raster)
+library(here)
+
+data(dem)
+data(sgseg)
+data(sgdat2018)
+data(sgdat2020)
+
+# this is the projstring for NAD83(HARN) / Florida West (ftUS)
+# https://spatialreference.org/ref/epsg/2882/
+prj4 <- '+proj=tmerc +lat_0=24.33333333333333 +lon_0=-82 +k=0.999941177 +x_0=200000.0001016002 +y_0=0 +ellps=GRS80 +to_meter=0.3048006096012192 +no_defs'
+
+# reproject layers
+tbseg <- tbseg %>% 
+  st_transform(crs = prj4)
+sgmanagement <- sgmanagement %>% 
+  st_transform(crs = prj4)
+
+# reproject dem, convert to stars 
+dem <- dem %>% 
+  projectRaster(crs = prj4) %>% 
+  st_as_stars()
+
+# reproject seagrass layers
+sgdat2018 <- sgdat2018 %>% 
+  st_transform(crs = prj4)
+stdat2020 <- sgdat2020 %>% 
+  st_transform(crs = prj4)
+```
+
+This code chunk does the following:
+
+1. Filters continuous and patchy seagrass from the 2018 and 2020 layers, unions by features
+1. Conducts a true change analysis by taking the differences between the 2018 and 2020 seagrass layers, then their intersection
+1. Combines all results showing changes between seagrass categories (`source` as 2018 category, `target` as 2020 category)
+1. Saves the results because the change analysis takes a while. 
+
+```{r, eval = F}
+# 2018 seagrass data
+a <- sgdat2018 %>% 
+  left_join(fluccs, by = 'FLUCCSCODE') %>%
+  st_union(by_feature = TRUE) %>%
+  mutate(
+    Category = paste0(Category, ', 2018')
+  )
+
+# 2020 seagrass data
+b <- sgdat2020 %>% 
+  st_union(by_feature = TRUE) %>%
+  left_join(fluccs,by = 'FLUCCSCODE') %>% 
+  mutate(
+    Category = paste0(Category, ', 2020')
+  )
+  
+# so intersect doesnt complain about attributes
+st_agr(a) = "constant"
+st_agr(b) = "constant"
+
+# some clean up stuff for slivers
+aunion <- a %>% 
+  st_union %>% 
+  st_set_precision(1e5) %>% 
+  st_make_valid() %>% 
+  st_buffer(dist = 0)
+bunion <- b %>% 
+  st_union %>% 
+  st_set_precision(1e5) %>% 
+  st_make_valid() %>% 
+  st_buffer(dist = 0)
+  
+# get full union
+op1 <- st_difference(a, bunion)
+op2 <- st_difference(b, aunion) %>%
+  rename(Category.1 = Category)
+op3 <- st_intersection(a, b)
+
+# combine and then need to make multipolygon to polygon, do by id otherwise it don't wrk
+unidat <- bind_rows(op1, op2, op3) %>%
+  mutate(
+    yr = unique(na.omit(sub('^.*\\,\\s([0-9]+)$', '\\1', Category))),
+    yr.1 = unique(na.omit(sub('^.*\\,\\s([0-9]+)$', '\\1', Category.1))),
+    Category = ifelse(is.na(Category), paste0('other, ', yr), as.character(Category)),
+    Category.1 = ifelse(is.na(Category.1), paste0('other, ', yr.1), as.character(Category.1)),
+    idval = 1:nrow(.)
+  ) %>%
+  dplyr::select(idval, Category.1, Category) %>%
+  dplyr::select(idval, source = Category, target = Category.1) %>% 
+  group_by(idval, source, target) %>% 
+  nest() %>% 
+  mutate(
+    data = purrr::map(data, st_cast, 'POLYGON')
+  ) %>% 
+  unnest('data') %>% 
+  st_as_sf()
+```
+
+The `unidat` dataset is subset to only gains and losses (i.e., polygons can remain the same between years or change between seagrass categories).  Areas of each polygon are calculated in acres. Polygons less than 0.023 acres are also removed because these are smaller than the cell size (30 by 30 feet, or 0.023 acres) of the bathymetry layer.  The file is saved because it takes a long time to calculate.
+
+```{r, eval = F}
+# select only lost/gained
+chgdat <- unidat %>% 
+  ungroup() %>% 
+  filter(target == 'other, 2020' | source == 'other, 2018') %>% 
+  mutate(
+    Acres = st_area(.), 
+    Acres = set_units(Acres, 'acres'), 
+    Acres = as.numeric(Acres), 
+    var = case_when(
+      target == 'other, 2020' ~ 'lost', 
+      source == 'other, 2018' ~ 'gained'
+    )
+  ) %>% 
+  dplyr::filter(Acres > 0.023) # remove slivers and those less than the pixel size (dem pixel size is about 30x30ft)
+
+save(chgdat, file = here('data/chgdat.RData'))
+```
+
+Reload the data for the rendered file. The results show polygon types in 2018 and 2020 in the `source` and `target` columns.  A polygon type of 'other' in the `source` column means seagrass was gained in 2020 and a polygon type of 'other' in the `target` column means seagrass was lost in 2020.
+
+```{r}
+load(file = here('data/chgdat.RData'))
+chgdat
+```
+
+```{r, out.width = '100%'}
+mapview(chgdat, zcol = 'var')
+```
+
+The `chgdat` layer (gained/lost) is aggregated by taking the average of the cells from the bathymetry layer that are within each polygon.  Polygons are removed that have no mean depth estimate because they are on the boundary or outside of the bathymetry layer. This also takes a while and is not rendered in this file.
+
+```{r, eval = F}
+chgdatarea <- chgdat %>% 
+  aggregate(dem, ., mean, as_points = T) %>% 
+  st_as_sf() %>% 
+  rename(meandepth = GDAL.Band.Number.1) %>% 
+  bind_cols(st_set_geometry(chgdat, NULL)) %>% 
+  filter(!is.na(meandepth))
+
+save(chgdatarea, file = here('data/chgdatarea.RData'))
+```
+
+Reload the data.  The `meandepth` column shows the average depth within each polygon as meters below MLLW (negative values).
+
+```{r}
+load(file = here('data/chgdatarea.RData'))
+chgdatarea
+```
+
+Now the change layer with depth estimates is combined with segment and management polygons to subset the data by areas of interest. 
+
+```{r}
+# reproject segment and 
+
+chgdatarea <- chgdatarea %>% 
+  st_intersection(tbseg) %>% 
+  st_intersection(sgmanagement) 
+  
+# ggplot(tmp3, aes(x = meandepth, group = var, color = var)) +
+#   stat_ecdf() + 
+#   facet_wrap(~bay_segment, ncol = 4)
+#   # facet_wrap(bay_segment~areas, ncol = 4)
+# 
+# 
+# mapview(demprj) + mapview(tmp2, zcol = 'var') + mapview(sgmng)
+```
