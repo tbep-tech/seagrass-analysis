@@ -1,8 +1,9 @@
 ---
+title: Seagrass changes by depth, 2018 to 2020
+author: "MW Beck"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
-
-# Seagrass changes by depth, 2018 to 2020
 
 This file evaluates seagrass gains and losses in coverage from 2018 to 2020.  The goal is to characterize the distribution of depth estimates for areas where changes have occurred.  A hypothesis is that seagrass may be lost at deeper depths as compared to where it was gained, possibly related to changes in water clarity that can cause seagrass to grow in more shallow areas where they are less light limited.
 
@@ -15,7 +16,7 @@ The analysis is in several steps:
 First, the relevant libraries and datasets are imported.  All analyses are conducted using the NAD83(HARN) / Florida West (ftUS) projection. 
 
 ```{r setup, include = FALSE, message = F, warning = F}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
 
 library(sf)
 library(tidyverse)
@@ -42,7 +43,7 @@ sgmanagement <- sgmanagement %>%
   st_transform(crs = prj4)
 
 # reproject dem, convert to stars 
-dem <- dem %>% 
+demstr <- dem %>% 
   projectRaster(crs = prj4) %>% 
   st_as_stars()
 
@@ -81,7 +82,7 @@ b <- sgdat2020 %>%
 st_agr(a) = "constant"
 st_agr(b) = "constant"
 
-# some clean up stuff for slivers
+# union separate layers for faster intersect
 aunion <- a %>% 
   st_union %>% 
   st_set_precision(1e5) %>% 
@@ -99,7 +100,7 @@ op2 <- st_difference(b, aunion) %>%
   rename(Category.1 = Category)
 op3 <- st_intersection(a, b)
 
-# combine and then need to make multipolygon to polygon, do by id otherwise it don't wrk
+# combine and make multipolygon to polygon, do by id otherwise it doesn't work
 unidat <- bind_rows(op1, op2, op3) %>%
   mutate(
     yr = unique(na.omit(sub('^.*\\,\\s([0-9]+)$', '\\1', Category))),
@@ -147,15 +148,16 @@ load(file = here('data/chgdat.RData'))
 chgdat
 ```
 
-```{r, out.width = '100%'}
-mapview(chgdat, zcol = 'var')
+```{r, out.width = '100%', out.height = '600px'}
+m <- mapview(dem, layer.name = 'Depth (m)') + mapview(chgdat, zcol = 'var', layer.name = 'Seagrass', col.regions = c("#F8766D", "#00BFC4"))
+m
 ```
 
 The `chgdat` layer (gained/lost) is aggregated by taking the average of the cells from the bathymetry layer that are within each polygon.  Polygons are removed that have no mean depth estimate because they are on the boundary or outside of the bathymetry layer. This also takes a while and is not rendered in this file.
 
 ```{r, eval = F}
 chgdatarea <- chgdat %>% 
-  aggregate(dem, ., mean, as_points = T) %>% 
+  aggregate(demstr, ., mean, as_points = T) %>% 
   st_as_sf() %>% 
   rename(meandepth = GDAL.Band.Number.1) %>% 
   bind_cols(st_set_geometry(chgdat, NULL)) %>% 
@@ -171,20 +173,49 @@ load(file = here('data/chgdatarea.RData'))
 chgdatarea
 ```
 
-Now the change layer with depth estimates is combined with segment and management polygons to subset the data by areas of interest. 
+Now the change layer with depth estimates is combined with segment and management polygons to summarize by areas of interest. 
 
 ```{r}
-# reproject segment and 
-
+# intersect change with relevant boundaries
 chgdatarea <- chgdatarea %>% 
   st_intersection(tbseg) %>% 
-  st_intersection(sgmanagement) 
-  
-# ggplot(tmp3, aes(x = meandepth, group = var, color = var)) +
-#   stat_ecdf() + 
-#   facet_wrap(~bay_segment, ncol = 4)
-#   # facet_wrap(bay_segment~areas, ncol = 4)
-# 
-# 
-# mapview(demprj) + mapview(tmp2, zcol = 'var') + mapview(sgmng)
+  st_intersection(sgmanagement) %>% 
+  unite('allbnds', bay_segment, areas, sep = ', ', remove = F)
+chgdatarea
+```
+
+The polygon boundaries are shown below (segments left, management areas right). 
+
+```{r, out.width = '100%'}
+m1 <- mapview(tbseg, legend = F, layer.name = 'Bay segments')
+m2 <- mapview(sgmanagement, legend = F, layer.name = 'Management areas')
+sync(m1, m2)
+```
+
+The plot below shows the cumulative distribution of acres lost and gained by major bay segments.
+
+```{r, fig.height = 3, fig.width = 9}
+ggplot(chgdatarea, aes(x = meandepth, color = var)) +
+  stat_ecdf() +
+  facet_wrap(~bay_segment, ncol = 4) +
+  theme_minimal() +
+  labs(
+    color = NULL,
+    x = 'Mean depth below MWWL (m)', 
+    y = 'ECDF'
+  )
+```
+
+The plot below shows the cumulative distribution of acres lost and gained by major bay segments and seagrass management areas.
+
+```{r, fig.height = 10, fig.width = 10}
+ggplot(chgdatarea, aes(x = meandepth, color = var)) +
+  stat_ecdf() +
+  facet_wrap(~allbnds) +
+  theme_minimal() +
+  labs(
+    color = NULL,
+    x = 'Mean depth below MWWL (m)', 
+    y = 'ECDF'
+  )
 ```
