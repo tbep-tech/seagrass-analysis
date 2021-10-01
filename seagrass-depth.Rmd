@@ -26,6 +26,10 @@ library(units)
 library(stars)
 library(raster)
 library(here)
+library(spatstat)
+
+# https://github.com/NicolasWoloszko/stat_ecdf_weighted
+source('R/stat_ecdf_weighted.R')
 
 data(dem)
 data(sgseg)
@@ -199,6 +203,20 @@ ggplot(chgdatarea, aes(x = meandepth, color = var)) +
   )
 ```
 
+Because the loss/gain polygons vary in area and the average depth is based on the areal average, we can weight the cumulative distribution curves to favor polygons with more area. 
+
+```{r, fig.height = 3, fig.width = 9}
+ggplot(chgdatarea, aes(x = meandepth, color = var, weight = Acres)) +
+  stat_ecdfwt() +
+  facet_wrap(~bay_segment, ncol = 4) +
+  theme_minimal() +
+  labs(
+    color = NULL,
+    x = 'Mean depth below MLLW (m)', 
+    y = 'ECDF'
+  )
+```
+
 ```{r, out.width = '100%', out.height = '800px'}
 mapview(tbseg, legend = F, layer.name = 'Bay segments')
 ```
@@ -208,7 +226,21 @@ The plot below shows the cumulative distribution of acres lost and gained by maj
 
 ```{r, fig.height = 10, fig.width = 10}
 ggplot(chgdatarea, aes(x = meandepth, color = var)) +
-  stat_ecdf() +
+  ggplot2::stat_ecdf() +
+  facet_wrap(~allbnds) +
+  theme_minimal() +
+  labs(
+    color = NULL,
+    x = 'Mean depth below MLLW (m)', 
+    y = 'ECDF'
+  )
+```
+
+Now repeat but weight the cumulative distribution curve to favor loss/gain polygons with more area. 
+
+```{r, fig.height = 10, fig.width = 10}
+ggplot(chgdatarea, aes(x = meandepth, color = var, weight = Acres)) +
+  stat_ecdfwt() +
   facet_wrap(~allbnds) +
   theme_minimal() +
   labs(
