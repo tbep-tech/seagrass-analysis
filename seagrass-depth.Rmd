@@ -22,6 +22,7 @@ library(sf)
 library(tidyverse)
 library(tbeptools)
 library(mapview)
+library(leaflet)
 library(units)
 library(stars)
 library(raster)
@@ -33,12 +34,19 @@ source('R/stat_ecdf_weighted.R')
 
 data(dem)
 data(sgseg)
+data(epcdata)
 data(sgdat2018)
 data(sgdat2020)
 
 # colors
 cols <- c('green4', 'tomato1')
 names(cols) <- c('gained', 'lost')
+
+# for maps
+colgrn <- c("#F7FCF5", "#E5F5E0", "#C7E9C0", "#A1D99B", "#74C476", "#41AB5D", 
+            "#238B45", "#006D2C", "#00441B")
+colred <- c("#FFF5F0", "#FEE0D2", "#FCBBA1", "#FC9272", "#FB6A4A", "#EF3B2C", 
+            "#CB181D", "#A50F15", "#67000D")               
 
 # this is the projstring for NAD83(HARN) / Florida West (ftUS)
 # https://spatialreference.org/ref/epsg/2882/
@@ -189,7 +197,10 @@ Now the change layer with depth estimates is combined with segment and managemen
 chgdatarea <- chgdatarea %>% 
   st_intersection(tbseg) %>% 
   st_intersection(sgmanagement) %>% 
-  unite('allbnds', bay_segment, areas, sep = ', ', remove = F)
+  unite('allbnds', bay_segment, areas, sep = ', ', remove = F) %>% 
+  mutate(
+    bay_segment = factor(bay_segment, levels = c('OTB', 'HB', 'MTB', 'LTB'))
+  )
 chgdatarea
 ```
 
@@ -241,8 +252,49 @@ ggplot(chgdatarea, aes(x = meandepth, color = var, weight = Acres)) +
   )
 ```
 
+We can show a similar result but mapped to the major polygon segment boundaries.  In addition, we can show the difference between the weighted averages for polygons where seagrass was gained vs lost.  This provides an overview of the net change in seagrass depth distributions, i.e., positive values show a net shift to shallower waters and negative values show a net shift to deeper waters.
+
 ```{r, out.width = '100%', out.height = '800px'}
-mapview(tbseg, legend = F, layer.name = 'Bay segments')
+# color function
+maxv <- 0.97
+colfun <- colorNumeric(
+  palette = c(rev(colgrn), colred),
+  domain = c(-1 * maxv, maxv)
+)
+
+# summarize depth values by segment
+# take difference to get net change
+tomap <- chgdatarea %>%  
+  st_set_geometry(NULL) %>% 
+  group_by(bay_segment, var) %>% 
+  summarise(meandepth = weighted.mean(meandepth, w = Acres), .groups = 'drop') %>% 
+  spread(var, meandepth) %>% 
+  mutate(
+    sgdlt = gained - lost
+  ) %>% 
+  inner_join(tbseg, ., by = 'bay_segment') %>% 
+  mutate(
+    fillhx = colfun(sgdlt)
+  ) %>% 
+  st_transform(crs = 4326)
+
+# map
+mapin <- mapview(tomap, homebutton = F, popup = NULL, legend = F) %>% 
+  .@map %>% 
+  leafem::removeMouseCoordinates() %>% 
+  clearShapes()
+vls <- seq(-1 * maxv, maxv, length.out = 10)
+mapin %>% 
+  addPolygons(
+    data = tomap,
+    stroke = T,
+    color = 'black',
+    weight = 1,
+    layerId = ~bay_segment,
+    fillColor = ~fillhx,
+    fillOpacity = 0.8
+  ) %>% 
+  addLegend("topright", pal = colfun, values = vls, opacity = 0.8, title = 'Net change (m)')  
 ```
  
 <br>
@@ -276,7 +328,352 @@ ggplot(chgdatarea, aes(x = meandepth, color = var, weight = Acres)) +
   )
 ```
 
+Again, create a similar map of net depth changes by bay segment but instead show the results by seagrass management areas. 
+
 ```{r, out.width = '100%', out.height = '800px'}
-mapview(sgmanagement, legend = F, layer.name = 'Management areas', zcol = NULL)
+# color function
+maxv <- 0.97
+colfun <- colorNumeric(
+  palette = c(rev(colgrn), colred),
+  domain = c(-1 * maxv, maxv)
+)
+
+# summarize depth values by segment
+# take difference to get net change
+tomap <- chgdatarea %>%  
+  st_set_geometry(NULL) %>% 
+  group_by(areas, var) %>% 
+  summarise(meandepth = weighted.mean(meandepth, w = Acres), .groups = 'drop') %>% 
+  spread(var, meandepth) %>% 
+  mutate(
+    sgdlt = gained - lost
+  ) %>% 
+  inner_join(sgmanagement, ., by = 'areas') %>% 
+  mutate(
+    fillhx = colfun(sgdlt)
+  ) %>% 
+  filter(!is.na(sgdlt)) %>% 
+  st_transform(crs = 4326)
+
+# map
+mapin <- mapview(tomap, homebutton = F, popup = NULL, legend = F) %>% 
+  .@map %>% 
+  leafem::removeMouseCoordinates() %>% 
+  clearShapes()
+vls <- seq(-1 * maxv, maxv, length.out = 10)
+mapin %>% 
+  addPolygons(
+    data = tomap,
+    stroke = T,
+    color = 'black',
+    weight = 1,
+    layerId = ~areas,
+    fillColor = ~fillhx,
+    fillOpacity = 0.8
+  ) %>% 
+  addLegend("topright", pal = colfun, values = vls, opacity = 0.8, title = 'Net change (m)')  
 ```
+
+The depth changes are super weird - most are opposite to our expectations that seagrass changes would be in more shallow areas if water quality conditions have changed between years. For context, water quality can also be evaluate.  Changes in secchi depth (m), turbidity (NTU), and color 345 (Pt-Co units) are now evaluated, with a focus on years 2017 and 2019 since seagrass coverage years for 2018 and 2020 were taken from images captures in late fall/early winter of these years. 
+
+First, the water quality data are plotted as annual averages to get a sense of general trends. 
+
+```{r, fig.width = 10, fig.height = 6}
+# summarize water quality data
+toplo <- epcdata %>% 
+  dplyr::select(yr, bay_segment, sd = sd_raw_m, turb = `Turbidity_JTU-NTU`, col = Color_345_F45_PCU) %>% 
+  gather('var', 'val', sd, turb, col) %>% 
+  group_by(yr, bay_segment, var) %>% 
+  filter(!grepl('[:alpha:]', val)) %>% 
+  mutate(val = as.numeric(val)) %>% 
+  summarise(val = mean(val, na.rm = T), .groups = 'drop') %>% 
+  filter(yr > 1990 & yr < 2020) %>% 
+  arrange(bay_segment, yr) %>% 
+  group_by(bay_segment, var) %>% 
+  mutate(
+    bay_segment = factor(bay_segment, levels = c('OTB', 'HB', 'MTB', 'LTB')), 
+    var = factor(var, levels = c('sd', 'turb', 'col'), labels = c('Secchi (m)', 'Turb (NTU)', 'Color (Pt-Co)')), 
+    yrcat = case_when(
+      yr %in% c(2017, 2019) ~ '2018, 2020 seagrass', 
+      T ~ ''
+    )
+  ) %>% 
+  ungroup()
+
+# plot
+ggplot(toplo, aes(x = yr, y = val)) + 
+  geom_line() + 
+  geom_point(aes(size = yrcat, color = yrcat)) +
+  facet_grid(var~bay_segment, scales = 'free_y') +
+  theme_minimal(base_size = 14) + 
+  theme(
+    strip.background = element_blank(), 
+    axis.title.x = element_blank(), 
+    axis.text.x = element_text(size = 9, angle = 40, hjust = 1), 
+    legend.position = 'top'
+  ) + 
+  scale_size_manual(values = c(-1, 2)) +
+  scale_color_manual(values = c('black', 'tomato1')) +
+  labs(
+    y = 'Annual averages', 
+    color = NULL, 
+    size = NULL
+  )
+```
+
+Just comparing the means and confidence intervals for 2017 and 2020:
+
+```{r, fig.width = 10, fig.height = 6}
+# summarize water quality data
+toplo <- epcdata %>% 
+  dplyr::select(yr, bay_segment, sd = sd_raw_m, turb = `Turbidity_JTU-NTU`, col = Color_345_F45_PCU) %>% 
+  gather('var', 'val', sd, turb, col) %>% 
+  filter(!grepl('[:alpha:]', val)) %>% 
+  filter(yr %in% c(2017, 2019)) %>% 
+  mutate(
+    val = as.numeric(val), 
+    bay_segment = factor(bay_segment, levels = c('OTB', 'HB', 'MTB', 'LTB')), 
+    var = factor(var, levels = c('sd', 'turb', 'col'), labels = c('Secchi (m)', 'Turb (NTU)', 'Color (Pt-Co)'))
+  ) %>% 
+  group_by(yr, var, bay_segment) %>% 
+  summarise(
+    lov = t.test(val)$conf.int[1],
+    hiv = t.test(val)$conf.int[2],
+    val = mean(val, na.rm = T), 
+    .groups = 'drop'
+  )
+
+# plot
+ggplot(toplo, aes(x = factor(yr), y = val, group = 1)) + 
+  geom_errorbar(aes(ymin = lov, ymax = hiv), width = 0.5) +
+  geom_line(linetype = 'dashed') + 
+  geom_point(size = 3, color = 'tomato1') +
+  facet_grid(var~bay_segment, scales = 'free_y') +
+  theme_minimal(base_size = 14) + 
+  theme(
+    strip.background = element_blank(), 
+    axis.title.x = element_blank(), 
+    axis.text.x = element_text(size = 9, angle = 40, hjust = 1), 
+    legend.position = 'top'
+  ) +
+  labs(
+    y = 'Annual averages (+/- 95% CI)', 
+    color = NULL, 
+    size = NULL
+  )
+
+```
+
+The water quality data can be aggregated by spatial units of interest.  In this case, the same parameters are aggregated by seagrass management areas and the percent change between 2017 and 2019 is assessed. 
+
+```{r}
+wqdat <- epcdata %>% 
+  dplyr::select(station = epchc_station, SampleTime, yr, mo, lat = Latitude, lng = Longitude, sd = sd_raw_m, turb = `Turbidity_JTU-NTU`, col = Color_345_F45_PCU) %>% 
+  filter(yr %in% c(2019, 2017)) %>% 
+  st_as_sf(coords = c('lng', 'lat'), crs = 4326) %>% 
+  st_transform(crs = prj4) %>% 
+  st_intersection(tbseg) %>% 
+  st_intersection(sgmanagement) %>% 
+  st_set_geometry(NULL) %>% 
+  unite('allbnds', bay_segment, areas, sep = ', ', remove = T) %>% 
+  dplyr::select(yr, allbnds, sd, turb, col) %>% 
+  gather('var', 'val', sd, turb, col) %>% 
+  filter(!grepl('[:alpha:]', val)) %>% 
+  mutate(val = as.numeric(val)) %>% 
+  group_by(yr, allbnds, var) %>% 
+  summarise(val = mean(val, na.rm = T), .groups = 'drop') %>% 
+  spread(yr, val) %>% 
+  mutate(
+    wqdlt = (`2019` - `2017`) / `2017`
+  ) %>% 
+  separate(allbnds, c('bay_segment', 'areas'), sep = ', ', remove = F)
+
+wqdat
+```
+
+Maps of the above percent changes by water quality parameter and seagrass management areas.
+
+Secchi: 
+
+```{r, out.width = '100%', out.height = '800px'}
+var <- 'sd'
+# color function
+maxv <- wqdat %>% 
+  filter(var == !!var) %>% 
+  pull(wqdlt) %>% 
+  abs %>% 
+  max
+colfun <- colorNumeric(
+  palette = c(rev(colred), colgrn),
+  domain = c(-1 * maxv, maxv)
+)
+
+# summarize depth values by segment
+# take difference to get net change
+tomap <- wqdat %>%  
+  dplyr::select(areas, var, wqdlt) %>% 
+  filter(var == !!var) %>% 
+  mutate(
+    fillhx = colfun(wqdlt), 
+    areas = as.numeric(areas)
+  ) %>% 
+  inner_join(sgmanagement, ., by = 'areas') %>%
+  st_transform(crs = 4326)
+
+# map
+mapin <- mapview(tomap, homebutton = F, popup = NULL, legend = F) %>% 
+  .@map %>% 
+  leafem::removeMouseCoordinates() %>% 
+  clearShapes()
+vls <- seq(-1 * maxv, maxv, length.out = 10)
+mapin %>% 
+  addPolygons(
+    data = tomap,
+    stroke = T,
+    color = 'black',
+    weight = 1,
+    layerId = ~areas,
+    fillColor = ~fillhx,
+    fillOpacity = 0.8
+  ) %>% 
+  addLegend("topright", pal = colfun, values = vls, opacity = 0.8, title = 'Secchi % change')  
+```
+
+Turbidity: 
+
+```{r, out.width = '100%', out.height = '800px'}
+var <- 'turb'
+# color function
+maxv <- wqdat %>% 
+  filter(var == !!var) %>% 
+  pull(wqdlt) %>% 
+  abs %>% 
+  max
+colfun <- colorNumeric(
+  palette = c(rev(colgrn), colred),
+  domain = c(-1 * maxv, maxv)
+)
+
+# summarize depth values by segment
+# take difference to get net change
+tomap <- wqdat %>%  
+  dplyr::select(areas, var, wqdlt) %>% 
+  filter(var == !!var) %>% 
+  mutate(
+    fillhx = colfun(wqdlt), 
+    areas = as.numeric(areas)
+  ) %>% 
+  inner_join(sgmanagement, ., by = 'areas') %>%
+  st_transform(crs = 4326)
+
+# map
+mapin <- mapview(tomap, homebutton = F, popup = NULL, legend = F) %>% 
+  .@map %>% 
+  leafem::removeMouseCoordinates() %>% 
+  clearShapes()
+vls <- seq(-1 * maxv, maxv, length.out = 10)
+mapin %>% 
+  addPolygons(
+    data = tomap,
+    stroke = T,
+    color = 'black',
+    weight = 1,
+    layerId = ~areas,
+    fillColor = ~fillhx,
+    fillOpacity = 0.8
+  ) %>% 
+  addLegend("topright", pal = colfun, values = vls, opacity = 0.8, title = 'Turb. % change')  
+```
+
+Color: 
+
+```{r, out.width = '100%', out.height = '800px'}
+var <- 'col'
+# color function
+maxv <- wqdat %>% 
+  filter(var == !!var) %>% 
+  pull(wqdlt) %>% 
+  abs %>% 
+  max
+colfun <- colorNumeric(
+  palette = c(rev(colgrn), colred),
+  domain = c(-1 * maxv, maxv)
+)
+
+# summarize depth values by segment
+# take difference to get net change
+tomap <- wqdat %>%  
+  dplyr::select(areas, var, wqdlt) %>% 
+  filter(var == !!var) %>% 
+  mutate(
+    fillhx = colfun(wqdlt), 
+    areas = as.numeric(areas)
+  ) %>% 
+  inner_join(sgmanagement, ., by = 'areas') %>%
+  st_transform(crs = 4326)
+
+# map
+mapin <- mapview(tomap, homebutton = F, popup = NULL, legend = F) %>% 
+  .@map %>% 
+  leafem::removeMouseCoordinates() %>% 
+  clearShapes()
+vls <- seq(-1 * maxv, maxv, length.out = 10)
+mapin %>% 
+  addPolygons(
+    data = tomap,
+    stroke = T,
+    color = 'black',
+    weight = 1,
+    layerId = ~areas,
+    fillColor = ~fillhx,
+    fillOpacity = 0.8
+  ) %>% 
+  addLegend("topright", pal = colfun, values = vls, opacity = 0.8, title = 'Color % change')  
+```
+
+The changes in water quality measurements can be compared to seagrass depth change estimates. The same analysis as above to evaluate net depth changes by management areas is repeated, then joined with the water quality percent change estimates by seagrass management areas where water quality data are available. 
+
+```{r, fig.height = 6, fig.width = 10}
+# summarize seagrass net change
+sgdat <- chgdatarea %>% 
+  st_set_geometry(NULL) %>% 
+  group_by(allbnds, var) %>% 
+  summarise(meandepth = weighted.mean(meandepth, w = Acres), .groups = 'drop') %>% 
+  spread(var, meandepth) %>% 
+  mutate(
+    sgdlt = gained - lost
+  ) %>% 
+  na.omit() %>% 
+  separate(allbnds, c('bay_segment', 'areas'), sep = ', ', remove = F)
+
+# join with water quality 
+toplo <- inner_join(wqdat, sgdat, by = c('allbnds', 'bay_segment', 'areas')) %>% 
+  dplyr::select(allbnds, bay_segment, var, sgdlt, wqdlt) %>% 
+  mutate(
+    bay_segment = factor(bay_segment, levels = c('OTB', 'HB', 'MTB', 'LTB')), 
+    var = factor(var, levels = c('sd', 'turb', 'col'), labels = c('Secchi (m)', 'Turb (NTU)', 'Color (Pt-Co)'))
+  )
+
+# plot
+ggplot(toplo, aes(x = wqdlt, y = sgdlt)) + 
+  geom_vline(xintercept = 0, linetype = 'dashed') +
+  geom_hline(yintercept = 0, linetype = 'dashed') +
+  geom_point(aes(color = bay_segment), size = 3) + 
+  facet_wrap(~var, scales = 'free_x') +
+  geom_smooth(method = 'lm', color = 'black') +
+  theme_minimal(base_size = 16) + 
+  theme(
+    strip.background = element_blank(), 
+    axis.text.x = element_text(size = 9, angle = 40, hjust = 1), 
+    legend.position = 'top', 
+    panel.grid.minor = element_blank()#, 
+    # panel.grid = element_blank()
+  ) +
+  labs(
+    y = 'Seagrass net depth change (m)', 
+    color = 'Bay segment', 
+    x = '% change'
+  )
+```
+
 
