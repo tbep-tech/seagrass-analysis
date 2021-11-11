@@ -267,7 +267,23 @@ colfun <- colorNumeric(
 tomap <- chgdatarea %>%  
   st_set_geometry(NULL) %>% 
   group_by(bay_segment, var) %>% 
-  summarise(meandepth = weighted.mean(meandepth, w = Acres), .groups = 'drop') %>% 
+  mutate(
+    wgt = sum(Acres, na.rm  = T)
+  ) %>% 
+  summarise(
+    meandepth = weighted.mean(meandepth, w = Acres),
+    wgt = unique(wgt),
+    .groups = 'drop'
+  ) %>%
+  group_by(var) %>% 
+  mutate(
+    wgt = wgt / sum(wgt)
+  ) %>% 
+  ungroup() %>% 
+  mutate(
+    meandepth = meandepth * wgt
+  ) %>% 
+  dplyr::select(-wgt) %>% 
   spread(var, meandepth) %>% 
   mutate(
     sgdlt = gained - lost
@@ -343,11 +359,27 @@ colfun <- colorNumeric(
 tomap <- chgdatarea %>%  
   st_set_geometry(NULL) %>% 
   group_by(areas, var) %>% 
-  summarise(meandepth = weighted.mean(meandepth, w = Acres), .groups = 'drop') %>% 
+  mutate(
+    wgt = sum(Acres, na.rm  = T)
+  ) %>% 
+  summarise(
+    meandepth = weighted.mean(meandepth, w = Acres),
+    wgt = unique(wgt),
+    .groups = 'drop'
+  ) %>%
+  group_by(var) %>% 
+  mutate(
+    wgt = wgt / sum(wgt)
+  ) %>% 
+  ungroup() %>% 
+  mutate(
+    meandepth = meandepth * wgt
+  ) %>% 
+  dplyr::select(-wgt) %>% 
   spread(var, meandepth) %>% 
   mutate(
     sgdlt = gained - lost
-  ) %>% 
+  ) %>%   
   inner_join(sgmanagement, ., by = 'areas') %>% 
   mutate(
     fillhx = colfun(sgdlt)
