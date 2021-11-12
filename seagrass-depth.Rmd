@@ -252,7 +252,7 @@ ggplot(chgdatarea, aes(x = meandepth, color = var, weight = Acres)) +
   )
 ```
 
-We can show a similar result but mapped to the major polygon segment boundaries.  In addition, we can show the difference between the weighted averages for polygons where seagrass was gained vs lost.  This provides an overview of the net change in seagrass depth distributions, i.e., positive values show a net shift to shallower waters and negative values show a net shift to deeper waters.
+We can show a similar result but mapped to the major polygon segment boundaries.  In addition, we can show the difference between the weighted averages for polygons where seagrass was gained vs lost.  This provides an overview of the net change in seagrass depth distributions, i.e., positive values show a net shift to shallower waters and negative values show a net shift to deeper waters.  The net change in seagrass depth is also weighted by total acreage lost by polygon boundary (e.g., OTB, HB, etc.). 
 
 ```{r, out.width = '100%', out.height = '800px'}
 # color function
@@ -348,7 +348,7 @@ Again, create a similar map of net depth changes by bay segment but instead show
 
 ```{r, out.width = '100%', out.height = '800px'}
 # color function
-maxv <- 0.97
+maxv <- 0.4
 colfun <- colorNumeric(
   palette = c(rev(colgrn), colred),
   domain = c(-1 * maxv, maxv)
@@ -670,7 +670,23 @@ The changes in water quality measurements can be compared to seagrass depth chan
 sgdat <- chgdatarea %>% 
   st_set_geometry(NULL) %>% 
   group_by(allbnds, var) %>% 
-  summarise(meandepth = weighted.mean(meandepth, w = Acres), .groups = 'drop') %>% 
+  mutate(
+    wgt = sum(Acres, na.rm  = T)
+  ) %>% 
+  summarise(
+    meandepth = weighted.mean(meandepth, w = Acres),
+    wgt = unique(wgt),
+    .groups = 'drop'
+  ) %>%
+  group_by(allbnds) %>% 
+  mutate(
+    wgt = wgt / sum(wgt)
+  ) %>% 
+  ungroup() %>% 
+  mutate(
+    meandepth = meandepth * wgt
+  ) %>% 
+  dplyr::select(-wgt) %>% 
   spread(var, meandepth) %>% 
   mutate(
     sgdlt = gained - lost
