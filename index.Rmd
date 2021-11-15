@@ -29,7 +29,7 @@ box::use(
   tidyr[spread, gather],
   reactable[reactableOutput, renderReactable], 
   knitr[include_graphics, kable], 
-  R/funcs[sgrctfun, sgmapfun, sgchgfun]
+  R/funcs[sgrctfun, sgmapfun, sgchgfun, sgtotchgfun]
 )
 data(file = 'seagrass', package = 'tbeptools')
 data(file = 'sgseg', package = 'tbeptools')

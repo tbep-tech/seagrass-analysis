@@ -37,6 +37,36 @@ sgchgfun <- function(datin, yrsel, colnm){
 }
 
 #' @export
+sgtotchgfun <- function(sums, yrsel){
+  
+  box::use(
+    dplyr[...]
+  )
+
+  if(yrsel[1] == yrsel[2] | any(!yrsel %in% names(sums))){
+    totchg <- ''
+    totchgper <- ''
+  }
+
+  if(yrsel[1] != yrsel[2] & all(yrsel %in% names(sums))){
+    
+    totchg <- sums %>%
+      .[, c(yrsel)] %>%
+      colSums() %>%
+      as.numeric
+    totchgper <- 100 * (totchg[2] - totchg[1]) / totchg[1]
+    totchgper <- totchgper %>% round(0) %>% paste0('%')
+    totchg <- diff(totchg) %>% round(0)
+    
+  }
+    
+  out <- c(totchg = totchg, totchgper = totchgper)
+
+  return(out)
+  
+}
+
+#' @export
 sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 150){
 
   box::use(
@@ -48,7 +78,7 @@ sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 1
 
   sticky_style <- list(position = "sticky", left = 0, background = "#fff", zIndex = 1,
                        borderRight = "1px solid #eee")
-  
+
   jsfun <- JS("function(rowInfo) {
     var value = rowInfo.row.chg
     if (parseInt(value) >= 0) {
@@ -63,6 +93,11 @@ sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 1
   # get change summary
   sums <- sgchgfun(datin, yrsel, colnm)
   
+  # get total change
+  totsums <- sgtotchgfun(sums, yrsel)
+  totchg <- totsums[['totchg']]
+  totchgper <- totsums[['totchgper']]
+
   # format for table 
   totab <- sums %>% 
     mutate(
@@ -71,22 +106,36 @@ sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 1
       val = as.character(val)
     )
 
+  # function for footer style on totals columns
+  footstylfun <- function(value){
+    color <- if (value > 0) {
+      "#008000"
+    } else if (value < 0) {
+      "#e00000"
+    }
+    list(fontWeight = 600, color = color)
+  }
+  
   out <- reactable(
     totab, 
     columns = list(
       val = colDef(name = colnm, footer = 'Total', minWidth = firstwidth, class = 'sticky left-col-1-bord', headerClass = 'sticky left-col-1-bord', footerClass = 'sticky left-col-1-bord'), 
-      chg = colDef(name = paste0(yrsel[1], '-', yrsel[2], ' change'), minWidth = 140,
-                   style = jsfun, class = 'sticky right-col-2', headerClass = 'sticky right-col-2', footerClass = 'sticky right-col-2'
+      chg = colDef(name = paste0(yrsel[1], '-', yrsel[2], ' change'), minWidth = 140, 
+                   style = jsfun, class = 'sticky right-col-2', headerClass = 'sticky right-col-2', footerClass = 'sticky right-col-2',
+                   footer = formatC(totchg, format= "d", big.mark = ","),  
+                   footerStyle = footstylfun(totchg)
       ), 
       chgper = colDef(name = '% change', minWidth = 85,
                       style = jsfun,
                       format = colFormat(suffix = '%', digits = 0), 
-                      class = 'sticky right-col-1', headerClass = 'sticky right-col-1', footerClass = 'sticky right-col-1'
-                      
+                      class = 'sticky right-col-1', headerClass = 'sticky right-col-1', footerClass = 'sticky right-col-1', 
+                      footer = totchgper, 
+                      footerStyle = footstylfun(totchgper)
       )
     ),
     defaultColDef = colDef(
       footer = function(values){
+        
         if(!is.numeric(values))
           return()
         
