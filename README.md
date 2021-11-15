@@ -1,6 +1,6 @@
 # seagrass-analysis
 
-[![DOI](https://zenodo.org/badge/402824973.svg)](https://zenodo.org/badge/latestdoi/402824973)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5507336.svg)](https://doi.org/10.5281/zenodo.5507336)
 
 Materials for assessing coverage changes and analysis of drivers of change for Tampa Bay seagrass.
 
