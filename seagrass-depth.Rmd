@@ -37,6 +37,7 @@ data(sgseg)
 data(epcdata)
 data(sgdat2018)
 data(sgdat2020)
+data(tnanndat)
 
 # colors
 cols <- c('green4', 'tomato1')
@@ -418,8 +419,13 @@ toplo <- epcdata %>%
   group_by(yr, bay_segment, var) %>% 
   filter(!grepl('[:alpha:]', val)) %>% 
   mutate(val = as.numeric(val)) %>% 
-  summarise(val = mean(val, na.rm = T), .groups = 'drop') %>% 
   filter(yr > 1990 & yr < 2020) %>% 
+  na.omit %>% 
+  summarise(
+    avev = mean(val, na.rm = T), .groups = 'drop', 
+    lov = t.test(val)$conf.int[1], 
+    hiv = t.test(val)$conf.int[2]
+  ) %>% 
   arrange(bay_segment, yr) %>% 
   group_by(bay_segment, var) %>% 
   mutate(
@@ -433,7 +439,8 @@ toplo <- epcdata %>%
   ungroup()
 
 # plot
-ggplot(toplo, aes(x = yr, y = val)) + 
+ggplot(toplo, aes(x = yr, y = avev)) + 
+  geom_ribbon(aes(ymin = lov, ymax = hiv), alpha = 0.3) +
   geom_line() + 
   geom_point(aes(size = yrcat, color = yrcat)) +
   facet_grid(var~bay_segment, scales = 'free_y') +
@@ -724,4 +731,41 @@ ggplot(toplo, aes(x = wqdlt, y = sgdlt)) +
   )
 ```
 
+Just for fun, let's plot TN load estimates by source in Old Tampa Bay. 
+
+```{r, fig.height = 4, fig.width = 9}
+levs <- c('NPS', 'IPS', 'GWS', 'DPS', 'AD')
+names(levs) <- c('Non-point source', 'Industrial', 'Groundwater', 'Domestic', 'Atmospheric')
+
+toplo <- tnanndat %>% 
+  filter(bay_segment %in% c('Old Tampa Bay')) %>%
+  mutate(
+    source = factor(source,
+      levels = c('NPS', 'IPS', 'GWS', 'DPS', 'AD'),
+      labels = c('Non-point source', 'Industrial', 'Groundwater', 'Domestic', 'Atmospheric')
+    ), 
+    source = reorder(source, -tn_load),
+    reg = source == 'Non-point source'
+  )
+
+p <- ggplot(toplo, aes(x = year, y = tn_load, color = source)) + 
+  geom_line(size = 1) + 
+  geom_smooth(data = toplo[toplo$source == 'Non-point source', ], method = 'lm', se = F, color = 'black', linetype = 'dashed') +
+  # scale_color_brewer(palette = 'Dark2') +
+  scale_y_continuous(expand = c(0, 0)) + 
+  labs(
+    y = 'TN (tons / yr)', 
+    x = NULL, 
+    color = NULL
+  ) + 
+  theme_minimal() + 
+  theme(
+    panel.grid.major.x = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(), 
+    axis.ticks.x = element_line(), 
+    legend.position = 'top'
+  )
+p
+```
 
