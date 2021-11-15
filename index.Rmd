@@ -38,10 +38,10 @@ load(file = here('data/allsegests.RData'))
 load(file = here('data/allmngests.RData'))
 
 # years to select
-yrs <- unique(allsegests$yr) %>% 
+yrs2 <- unique(allsegests$yr) %>% 
   sort %>% 
-  .[1:(length(.))] %>% 
-  c('1950', '1982', .)
+  .[1:(length(.))]
+yrs1 <- c('1950', '1982', yrs2)
 
 # combined segment estimates
 segcmbests <- allsegests %>% 
@@ -270,8 +270,9 @@ include_graphics('figures/seagrasscov.png')
 ## By segment {.tabset .tabset-pills}
 
 ```{r}
-sliderTextInput('yrsel1', 'Select year comparison', choices = yrs, grid = T, width = '600px', selected = c(yrs[1], rev(yrs)[1]))
+sliderTextInput('yrsel1', 'Select year comparison', choices = yrs1, grid = T, width = '600px', selected = c(yrs1[1], rev(yrs1)[1]))
 ```
+Note: 1950, 1982 years are unavailable for continuous or patchy only comparisons.
 
 ### Continous + Patchy
 
@@ -312,8 +313,9 @@ leafletOutput('segptcmap', height = lfht)
 ## By management area {.tabset .tabset-pills}
 
 ```{r}
-sliderTextInput('yrsel2', 'Select year comparison', choices = yrs, grid = T, width = '600px', selected = c(yrs[1], rev(yrs)[1]))
+sliderTextInput('yrsel2', 'Select year comparison', choices = yrs2, grid = T, width = '600px', selected = c(yrs2[1], rev(yrs2)[1]))
 ```
+Note: 1950, 1982 years are unavailable for all management area comparisons.
 
 ### Continous + Patchy
 
