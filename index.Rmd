@@ -43,90 +43,192 @@ yrs2 <- unique(allsegests$yr) %>%
   .[1:(length(.))]
 yrs1 <- c('1950', '1982', yrs2)
 
-# combined segment estimates
-segcmbests <- allsegests %>% 
-  filter(Habitat %in% c('patchy', 'cont.')) %>% 
-  group_by(yr, Segment) %>% 
-  summarise(
-    Acres = sum(Acres, na.rm = T), 
-    .groups = 'drop'
-    ) %>% 
-  spread(yr, Acres, fill = 0)
-segcmbhst <- tibble(
-    Segment = c("Boca Ciega Bay", "Hillsborough Bay", "Lower Tampa Bay", "Manatee River", 
-                "Middle Tampa Bay", "Old Tampa Bay", "Terra Ceia Bay"),
-    `1950` = c(10800, 2300, 6100, 200, 9600, 10700, 700), 
-    `1982` = c(5770, 0, 5016, 131, 4042, 5943, 751)
-  )
-segcmbests <- segcmbhst %>% 
-  full_join(segcmbests, by = 'Segment')
-
-# patchy segment estimates
-segptcests <- allsegests %>% 
-  filter(Habitat == 'patchy') %>% 
-  select(yr, Segment, Acres) %>% 
-  spread(yr, Acres, fill = 0)
-
-# continuous segment estimates
-segcntests <- allsegests %>% 
-  filter(Habitat == 'cont.') %>% 
-  select(yr, Segment, Acres) %>% 
-  spread(yr, Acres, fill = 0)
-
-# combined management estimates
-mngcmbests <- allmngests %>% 
-  filter(Habitat %in% c('patchy', 'cont.')) %>% 
-  group_by(yr, Areas) %>% 
-  summarise(
-    Acres = sum(Acres, na.rm = T), 
-    .groups = 'drop'
-    ) %>% 
-  spread(yr, Acres, fill = 0)
-
-# patchy management estimates
-mngptcests <- allmngests %>% 
-  filter(Habitat == 'patchy') %>% 
-  select(yr, Areas, Acres) %>% 
-  spread(yr, Acres, fill = 0)
-
-# continuous management estimates
-mngcntests <- allmngests %>% 
-  filter(Habitat == 'cont.') %>% 
-  select(yr, Areas, Acres) %>% 
-  spread(yr, Acres, fill = 0)
-
-# max segment diff
-segmaxv <- segcmbests %>% 
-  select(-Segment) %>% 
-  mutate(
-    maxv = do.call(pmax, .), 
-    minv = do.call(pmin, .), 
-    rng = maxv - minv
-  ) %>% 
-  pull(rng) %>% 
-  max
-
-# max management diff
-mngmaxv <- mngcmbests %>% 
-  select(-Areas) %>% 
-  mutate(
-    maxv = do.call(pmax, .), 
-    minv = do.call(pmin, .), 
-    rng = maxv - minv
-  ) %>% 
-  pull(rng) %>% 
-  max
+hec <- 0.404686
 
 # leaflet height
 lfht <- 600
 ```
 
 ```{r reactives}
+# segment combined estimates
+segcmbests <- reactive({
+  
+  # input
+  valtyp <- input$valtyp
+  
+  # combined segment estimates
+  segcmb <- allsegests %>% 
+    filter(Habitat %in% c('patchy', 'cont.')) %>% 
+    group_by(yr, Segment) %>% 
+    summarise(
+      Acres = sum(Acres, na.rm = T), 
+      .groups = 'drop'
+      ) %>% 
+    spread(yr, Acres, fill = 0)
+
+  segcmbhst <- tibble(
+      Segment = c("Boca Ciega Bay", "Hillsborough Bay", "Lower Tampa Bay", "Manatee River", 
+                  "Middle Tampa Bay", "Old Tampa Bay", "Terra Ceia Bay"),
+      `1950` = c(10800, 2300, 6100, 200, 9600, 10700, 700), 
+      `1982` = c(5770, 0, 5016, 131, 4042, 5943, 751)
+    )
+  out <- segcmbhst %>% 
+    full_join(segcmb, by = 'Segment')
+    
+  if(valtyp == 'Hectares')
+    out <- out %>% 
+      mutate_if(is.numeric, function(x) x * hec)
+  
+  return(out)
+  
+})
+
+# segment continuous estimates
+segcntests <- reactive({
+  
+  # input
+  valtyp <- input$valtyp
+  
+  out <- allsegests %>% 
+    filter(Habitat == 'cont.') %>% 
+    select(yr, Segment, Acres) %>% 
+    spread(yr, Acres, fill = 0)
+
+  if(valtyp == 'Hectares')
+    out <- out %>% 
+      mutate_if(is.numeric, function(x) x * hec)
+    
+  return(out)
+  
+})
+
+# segment patchy estimates
+segptcests <- reactive({
+
+  # input
+  valtyp <- input$valtyp
+  
+  out <- allsegests %>% 
+    filter(Habitat == 'patchy') %>% 
+    select(yr, Segment, Acres) %>% 
+    spread(yr, Acres, fill = 0)
+  
+  if(valtyp == 'Hectares')
+    out <- out %>% 
+      mutate_if(is.numeric, function(x) x * hec)
+  
+  return(out)
+  
+})
+
+# max segment diff for map color scaling
+segmaxv <- reactive({
+  
+  # inputs
+  segcmbests <- segcmbests()
+  
+  out <- segcmbests %>%
+    select(-Segment) %>% 
+    mutate(
+      maxv = do.call(pmax, .), 
+      minv = do.call(pmin, .), 
+      rng = maxv - minv
+    ) %>% 
+    pull(rng) %>% 
+    max
+  
+  return(out)
+  
+})
+
+# managed combined estimates
+mngcmbests <- reactive({
+
+  # input
+  valtyp <- input$valtyp
+  
+  out <- allmngests %>% 
+    filter(Habitat %in% c('patchy', 'cont.')) %>% 
+    group_by(yr, Areas) %>% 
+    summarise(
+      Acres = sum(Acres, na.rm = T), 
+      .groups = 'drop'
+      ) %>% 
+    spread(yr, Acres, fill = 0)
+    
+  if(valtyp == 'Hectares')
+    out <- out %>% 
+      mutate_if(is.numeric, function(x) x * hec)
+  
+  return(out)  
+
+})
+
+# managed continuous estimates
+mngcntests <- reactive({
+
+  # input
+  valtyp <- input$valtyp
+  
+  out <- allmngests %>% 
+    filter(Habitat == 'cont.') %>% 
+    select(yr, Areas, Acres) %>% 
+    spread(yr, Acres, fill = 0)
+    
+  if(valtyp == 'Hectares')
+    out <- out %>% 
+      mutate_if(is.numeric, function(x) x * hec)
+  
+  return(out)    
+
+})
+
+# managed patchy estimates
+mngptcests <- reactive({
+  
+  # input
+  valtyp <- input$valtyp
+
+  out <- allmngests %>% 
+    filter(Habitat == 'patchy') %>% 
+    select(yr, Areas, Acres) %>% 
+    spread(yr, Acres, fill = 0)
+  
+  if(valtyp == 'Hectares')
+    out <- out %>% 
+      mutate_if(is.numeric, function(x) x * hec)
+    
+  return(out)
+  
+})
+
+# max managed diff for map color scaling
+mngmaxv <- reactive({
+  
+  # inputs
+  mngcmbests <- mngcmbests()
+  
+  out <- mngcmbests %>%
+    select(-Areas) %>% 
+    mutate(
+      maxv = do.call(pmax, .), 
+      minv = do.call(pmin, .), 
+      rng = maxv - minv
+    ) %>% 
+    pull(rng) %>% 
+    max
+  
+  return(out)
+  
+})
+
 # segment combined trend table
 segcmbtab <- reactive({
   
   # inputs
   yrsel1 <- input$yrsel1
+  segcmbests <- segcmbests()
+  
   out <- sgrctfun(segcmbests, 'Segment', yrsel = yrsel1)
 
   return(out)
@@ -138,6 +240,9 @@ segcmbmap <- reactive({
   
   # inputs
   yrsel1 <- input$yrsel1
+  segcmbests <- segcmbests()
+  segmaxv <- segmaxv()
+
   out <- sgmapfun(segcmbests, 'Segment', yrsel = yrsel1, bndin = sgseg, maxv = segmaxv)
 
   return(out)
@@ -149,6 +254,8 @@ segcnttab <- reactive({
   
   # inputs
   yrsel1 <- input$yrsel1
+  segcntests <- segcntests()
+  
   out <- sgrctfun(segcntests, 'Segment', yrsel = yrsel1)
 
   return(out)
@@ -160,6 +267,9 @@ segcntmap <- reactive({
   
   # inputs
   yrsel1 <- input$yrsel1
+  segcntests <- segcntests()
+  segmaxv <- segmaxv()
+  
   out <- sgmapfun(segcntests, 'Segment', yrsel = yrsel1, bndin = sgseg, maxv = segmaxv)
 
   return(out)
@@ -171,6 +281,8 @@ segptctab <- reactive({
   
   # inputs
   yrsel1 <- input$yrsel1
+  segptcests <- segptcests()
+  
   out <- sgrctfun(segptcests, 'Segment', yrsel = yrsel1)
 
   return(out)
@@ -182,6 +294,9 @@ segptcmap <- reactive({
   
   # inputs
   yrsel1 <- input$yrsel1
+  segptcests <- segptcests()
+  segmaxv <- segmaxv()
+  
   out <- sgmapfun(segptcests, 'Segment', yrsel = yrsel1, bndin = sgseg, maxv = segmaxv)
 
   return(out)
@@ -193,6 +308,8 @@ mngcmbtab <- reactive({
   
   # inputs
   yrsel2 <- input$yrsel2
+  mngcmbests <- mngcmbests()
+  
   out <- sgrctfun(mngcmbests, 'Areas', yrsel = yrsel2)
 
   return(out)
@@ -204,6 +321,9 @@ mngcmbmap <- reactive({
   
   # inputs
   yrsel2 <- input$yrsel2
+  mngcmbests <- mngcmbests()
+  mngmaxv <- mngmaxv()
+  
   out <- sgmapfun(mngcmbests, 'Areas', yrsel = yrsel2, bndin = sgmanagement, maxv = mngmaxv)
 
   return(out)
@@ -215,6 +335,8 @@ mngcnttab <- reactive({
   
   # inputs
   yrsel2 <- input$yrsel2
+  mngcntests <- mngcntests()
+  
   out <- sgrctfun(mngcntests, 'Areas', yrsel = yrsel2)
 
   return(out)
@@ -226,6 +348,9 @@ mngcntmap <- reactive({
   
   # inputs
   yrsel2 <- input$yrsel2
+  mngcntests <- mngcntests()
+  mngmaxv <- mngmaxv()
+  
   out <- sgmapfun(mngcntests, 'Areas', yrsel = yrsel2, bndin = sgmanagement, maxv = mngmaxv)
 
   return(out)
@@ -237,6 +362,8 @@ mngptctab <- reactive({
   
   # inputs
   yrsel2 <- input$yrsel2
+  mngptcests <- mngptcests()
+  
   out <- sgrctfun(mngptcests, 'Areas', yrsel = yrsel2)
 
   return(out)
@@ -248,6 +375,9 @@ mngptcmap <- reactive({
   
   # inputs
   yrsel2 <- input$yrsel2
+  mngptcests <- mngptcests()
+  mngmaxv <- mngmaxv()
+  
   out <- sgmapfun(mngptcests, 'Areas', yrsel = yrsel2, bndin = sgmanagement, maxv = mngmaxv)
 
   return(out)
@@ -255,10 +385,19 @@ mngptcmap <- reactive({
 })
 ```
 
+```{r}
+selectInput('valtyp', 'Show all segment and management area results as:', choices = c('Acres', 'Hectares'), width = '400px')
+```
+
 ## Tampa Bay
 
 ```{r}
-kable(seagrass, caption = 'All estimates for all segments, based on historical coverages used to report on annual progress toward recovery goals.', digits = 0)
+seagrass %>% 
+  mutate(
+    Acres = formatC(Acres, format = "d", big.mark = ","), 
+    Hectares = formatC(Hectares, format = "d", big.mark = ",")
+  ) %>% 
+  kable(caption = 'All estimates for all segments, based on historical coverages used to report on annual progress toward recovery goals.', align = 'lrr')
 ```
 
 [download figure](https://github.com/tbep-tech/seagrass-analysis/raw/main/figures/seagrasscov.png){target="_blank"}
