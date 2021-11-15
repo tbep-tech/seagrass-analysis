@@ -60,7 +60,7 @@ sgtotchgfun <- function(sums, yrsel){
     
   }
     
-  out <- c(totchg = totchg, totchgper = totchgper)
+  out <- list(totchg = totchg, totchgper = totchgper)
 
   return(out)
   
@@ -115,7 +115,7 @@ sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 1
     }
     list(fontWeight = 600, color = color)
   }
-  
+
   out <- reactable(
     totab, 
     columns = list(
