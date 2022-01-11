@@ -47,6 +47,8 @@ lasty <- seagrass %>%
 # axis labels
 lbs <- toplo$Year
 lbs[lbs %in% exyrs[-1]] <- ''
+brks <- lbs
+lbs[as.numeric(lbs) %% 2 != 0] <- ''
 
 p <- ggplot(toplo, aes(x = factor(Year), y = Acres)) +
   with_shadow(geom_bar(fill = '#00806E', stat = 'identity', colour = 'black', width = 1.3), sigma = 2.7, x_offset = 0, y_offset = 0) +
@@ -55,13 +57,13 @@ p <- ggplot(toplo, aes(x = factor(Year), y = Acres)) +
   geom_segment(x = 42, xend = 44, y = 40, yend = 40, col = 'red', size = 2) +
   annotate("text", label = "Seagrass Coverage Goal", x = 4, y = 40.5, color = 'red', size = 5, hjust = 0, family = fml) +
   annotate('text', x = 43, y = lasty, label = lastlab, angle = 90, hjust = 1, vjust = 0.4) + 
-  scale_x_discrete(breaks = lbs, labels = lbs, expand = c(0.04, 0.04)) +
+  scale_x_discrete(breaks = brks, labels = lbs, expand = c(0.04, 0.04)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, 1.1 * max(toplo$Acres, na.rm = T))) +
   # theme_bw() +
   theme(
     axis.line = element_line(),
     panel.background = element_blank(),
-    axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
     axis.title.x = element_blank(),
     legend.position = 'none',
     panel.grid.minor = element_blank(),
@@ -101,6 +103,6 @@ gt$grobs[[is_axisr]] <-axisl$children[[1]]
 ##
 # save plot
 
-png(here('figures/seagrasscov.png'), height = 3.25, width = 6, res = 300, unit = 'in')
+png(here('figures/seagrasscov.png'), width = 2886, height = 1632, res = 500, unit = 'px')
 grid.newpage(); grid.draw(gt)
 dev.off()
