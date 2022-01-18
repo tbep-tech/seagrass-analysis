@@ -47,6 +47,10 @@ hec <- 0.404686
 
 # leaflet height
 lfht <- 600
+
+# # style file
+# styles <- readLines('https://raw.githubusercontent.com/tbep-tech/css-styling/master/styles.css')
+# writeLines(styles, 'styles.css')
 ```
 
 ```{r reactives}
