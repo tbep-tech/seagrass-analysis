@@ -9,9 +9,6 @@ library(httr)
 library(XML)
 library(raster)
 
-data(sgseg)
-data(sgmanagement)
-
 # NAD83(HARN) / Florida West (ftUS)
 # this is the projection for the seagrass segment layer from the district
 prj <- 2882
@@ -25,35 +22,14 @@ prj <- 2882
 
 # import seagrass layers from source --------------------------------------
 
-# tb segment boundaries
-tbsgseg <- sgseg %>% 
-  filter(segment %in% c('Old Tampa Bay', 'Hillsborough Bay', 'Middle Tampa Bay', 'Lower Tampa Bay', 'Terra Ceia Bay', 
-                         'Manatee River','Boca Ciega Bay')) %>% 
-  st_union() %>% 
-  st_buffer(dist = 0) %>% 
-  st_geometry() %>%
-  st_cast('POLYGON') %>% 
-  st_buffer(dist = 0) 
-
-# management areas
-tbsgmng <- sgmanagement %>% 
-  st_union() %>% 
-  st_buffer(dist = 0) %>% 
-  st_geometry() %>%
-  st_cast('POLYGON') %>% 
-  st_buffer(dist = 0) 
+# district layer
+toint <- swfwmdtbseg %>% 
+  st_transform(crs = prj) %>% 
+  st_union()
   
-# combine tb boundaries and management areas
-tbbnds <- st_union(tbsgmng, tbsgseg) %>% 
-  st_union() %>% 
-  st_buffer(dist = 0) %>% 
-  st_geometry() %>%
-  st_cast('POLYGON') %>% 
-  st_buffer(dist = 0) 
-
 # all zipped files on amazon s3
 # downloaded from here https://data-swfwmd.opendata.arcgis.com/
-fls <- c('88', '90', '92', '94', '96', '99', '01', '04', '06', '08', '10', '12', '14', '16', '18', '20') %>% 
+fls <- c('88', '90', '92', '94', '96', '99', '01', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22') %>% 
   paste0('https://swfwmd-seagrass.s3.amazonaws.com/sg', ., '.zip')
 
 for(i in 1:length(fls)){
@@ -85,7 +61,7 @@ for(i in 1:length(fls)){
     st_transform(crs = prj) %>%
     dplyr::select(FLUCCSCODE) %>% 
     filter(FLUCCSCODE %in% c('9113', '9116')) %>%
-    st_intersection(tbbnds)
+    st_intersection(toint)
   
   # name assignment and save
   flnm <- gsub('^sg|\\.zip$', '', basename(fls[i])) %>% 
