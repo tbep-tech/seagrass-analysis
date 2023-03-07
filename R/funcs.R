@@ -148,7 +148,7 @@ sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 1
     ),
     # defaultPageSize = 7,
     pagination = F, 
-    height = 325,
+    height = 360,
     showPageSizeOptions = F,
     highlight = T,
     wrap = F

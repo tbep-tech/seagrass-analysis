@@ -232,7 +232,7 @@ segcmbtab <- reactive({
   # inputs
   yrsel1 <- input$yrsel1
   segcmbests <- segcmbests()
-  
+
   out <- sgrctfun(segcmbests, 'Segment', yrsel = yrsel1)
 
   return(out)
