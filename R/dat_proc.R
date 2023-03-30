@@ -13,6 +13,19 @@ library(raster)
 # this is the projection for the seagrass segment layer from the district
 prj <- 2882
 
+
+# bay segments clipped to shore -------------------------------------------
+
+load(file = url('https://github.com/tbep-tech/benthic-dash/raw/main/data/segmask.RData'))
+
+segclp <- tbsegshed %>%
+  st_make_valid() %>%
+  st_intersection(segmask) %>%
+  st_simplify(dTolerance = 20, preserveTopology = TRUE) %>% 
+  rename(segment = long_name)
+
+save(segclp, file = here('data/segclp.RData'))
+
 # dem data ----------------------------------------------------------------
 
 # # https://www.ngdc.noaa.gov/mgg/bathymetry/estuarine/

@@ -32,10 +32,10 @@ box::use(
   R/funcs[sgrctfun, sgmapfun, sgchgfun, sgtotchgfun]
 )
 data(file = 'seagrass', package = 'tbeptools')
-data(file = 'sgseg', package = 'tbeptools')
 data(file = 'sgmanagement', package = 'tbeptools')
 load(file = here('data/allsegests.RData'))
 load(file = here('data/allmngests.RData'))
+load(file = here('data/segclp.RData'))
 
 # years to select
 yrs2 <- unique(allsegests$yr) %>% 
@@ -265,7 +265,7 @@ segcmbmap <- reactive({
   segcmbests <- segcmbests()
   segmaxv <- segmaxv()
 
-  out <- sgmapfun(segcmbests, 'Segment', yrsel = yrsel1, bndin = sgseg, maxv = segmaxv)
+  out <- sgmapfun(segcmbests, 'Segment', yrsel = yrsel1, bndin = segclp, maxv = segmaxv)
 
   return(out)
   
@@ -292,7 +292,7 @@ segcntmap <- reactive({
   segcntests <- segcntests()
   segmaxv <- segmaxv()
   
-  out <- sgmapfun(segcntests, 'Segment', yrsel = yrsel1, bndin = sgseg, maxv = segmaxv)
+  out <- sgmapfun(segcntests, 'Segment', yrsel = yrsel1, bndin = segclp, maxv = segmaxv)
 
   return(out)
   
@@ -319,7 +319,7 @@ segptcmap <- reactive({
   segptcests <- segptcests()
   segmaxv <- segmaxv()
   
-  out <- sgmapfun(segptcests, 'Segment', yrsel = yrsel1, bndin = sgseg, maxv = segmaxv)
+  out <- sgmapfun(segptcests, 'Segment', yrsel = yrsel1, bndin = segclp, maxv = segmaxv)
 
   return(out)
   
