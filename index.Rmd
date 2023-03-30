@@ -130,17 +130,32 @@ segmaxv <- reactive({
   
   # inputs
   segcmbests <- segcmbests()
+  segcntests <- segcntests()
+  segptcests <- segptcests()
+  yrsel1 <- input$yrsel1
   
-  out <- segcmbests %>%
-    select(-Segment) %>% 
-    mutate(
-      maxv = do.call(pmax, .), 
-      minv = do.call(pmin, .), 
-      rng = maxv - minv
-    ) %>% 
-    pull(rng) %>% 
-    max
+  if(yrsel1[1] %in% c(1950, 1982))
+    out <- bind_rows(segcmbests) %>%
+      select(any_of(yrsel1)) %>% 
+      mutate(
+        maxv = do.call(pmax, .), 
+        minv = do.call(pmin, .), 
+        rng = maxv - minv
+      ) %>% 
+      pull(rng) %>% 
+      max
   
+  if(!yrsel1[1] %in% c(1950, 1982))
+    out <- bind_rows(segcmbests, segcntests, segptcests) %>%
+      select(any_of(yrsel1)) %>% 
+      mutate(
+        maxv = do.call(pmax, .), 
+        minv = do.call(pmin, .), 
+        rng = maxv - minv
+      ) %>% 
+      pull(rng) %>% 
+      max
+    
   return(out)
   
 })
@@ -211,9 +226,12 @@ mngmaxv <- reactive({
   
   # inputs
   mngcmbests <- mngcmbests()
-  
-  out <- mngcmbests %>%
-    select(-Areas) %>% 
+  mngcntests <- mngcntests()
+  mngptcests <- mngptcests()
+  yrsel2 <- input$yrsel2
+
+  out <- bind_rows(mngcmbests, mngcntests, mngptcests) %>%
+    select(all_of(yrsel2)) %>% 
     mutate(
       maxv = do.call(pmax, .), 
       minv = do.call(pmin, .), 
