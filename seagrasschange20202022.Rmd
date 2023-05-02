@@ -2,7 +2,9 @@
 title: Seagrass changes 2020 to 2022
 author: "MW Beck"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: html_document
+output: 
+  html_document:
+    code_folding: hide
 ---
 
 ```{r setup, echo = T, message = F, warning = F}
@@ -12,27 +14,6 @@ library(sf)
 library(dplyr)
 library(units)
 library(mapview)
-
-# # check layers
-# gdb <- 'T:/05_GIS/SWFWMD/Seagrass/2022_Seagrass/DraftMaps2022_1130.gdb'
-# st_layers(gdb)
-# 
-# chgdat <- st_read(dsn = gdb, layer = 'Seagrass_in_2022_Suncoast_ChangeAnalysis')
-# mapview(chgdat)
-# 
-# totals <- chgdat %>% 
-#   mutate(
-#     area = st_area(.),
-#     area = set_units(area, 'acres')
-#   ) %>% 
-#   st_set_geometry(NULL) %>% 
-#   summarise(
-#     area = sum(area), 
-#     .by = 'ANAYLSIS'
-#   )
-# 
-# # should be ~4161
-# diff(totals$area)
 
 data(sgdat2020)
 data(sgdat2022)
@@ -51,6 +32,8 @@ sgdat2020 <- sgdat2020 %>%
 stdat2022 <- sgdat2022 %>% 
   st_transform(crs = prj4)
 ```
+
+# TBEP internal change calcs
 
 ```{r, eval = F}
 # 2020 seagrass data
@@ -123,10 +106,10 @@ chgdat20202022 <- unidat %>%
 save(chgdat20202022, file = 'data/chgdat20202022.RData', compress = 'xz')
 ```
 
-```{r}
+```{r, out.width = '100%', out.height = '800px'}
 load(file = 'data/chgdat20202022.RData')
 
-mapview(chgdat20202022, zcol = 'var')
+mapview(chgdat20202022, zcol = 'var', layer.name = 'Seagrass', col.regions = cols)
 ```
 
 Check diff:
@@ -140,4 +123,39 @@ totals <- chgdat20202022 %>%
   )
 diff(totals$Acres)
 ```
+
+<!-- # Provisional map, district calculated -->
+
+<!-- ```{r, out.width = '100%', out.height = '800px'} -->
+<!-- # check layers -->
+<!-- gdb <- 'T:/05_GIS/SWFWMD/Seagrass/2022_Seagrass/DraftMaps2022_1130.gdb' -->
+
+<!-- chgdat <- st_read(dsn = gdb, layer = 'Seagrass_in_2022_Suncoast_ChangeAnalysis') %>%  -->
+<!--   select(var = ANAYLSIS) %>%  -->
+<!--   mutate( -->
+<!--     var = case_when( -->
+<!--       var == 'LOSS' ~ 'lost', -->
+<!--       var == 'GAIN' ~ 'gained' -->
+<!--     ) -->
+<!--   ) -->
+<!-- mapview(chgdat, zcol = 'var', layer.name = 'Seagrass', col.regions = cols) -->
+<!-- ``` -->
+
+<!-- Check diff:  -->
+
+<!-- ```{r} -->
+<!-- totals <- chgdat %>% -->
+<!--   mutate( -->
+<!--     area = st_area(.), -->
+<!--     area = set_units(area, 'acres') -->
+<!--   ) %>% -->
+<!--   st_set_geometry(NULL) %>% -->
+<!--   summarise( -->
+<!--     area = sum(area), -->
+<!--     .by = 'ANAYLSIS' -->
+<!--   ) -->
+
+<!-- # should be ~4161 -->
+<!-- diff(totals$area) -->
+<!-- ``` -->
 
