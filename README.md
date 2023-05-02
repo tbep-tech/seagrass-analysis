@@ -6,3 +6,4 @@ Materials for assessing coverage changes and analysis of drivers of change for T
 
 * Coverage estimates over time by major bay segments and management areas: [shiny](https://shiny.tbep.org/seagrass-analysis)
 * Seagrass gains/losses from 2018 to 2020, with summaries by depth and major areas of the bay: [link](https://tbep-tech.github.io/seagrass-analysis/seagrass-depth.html)
+* Seagrass gains/losses from 2020 to 2022: [link](https://tbep-tech.github.io/seagrass-analysis/seagrasschange20202022.html)

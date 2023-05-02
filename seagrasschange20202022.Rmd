@@ -1,0 +1,143 @@
+---
+title: Seagrass changes 2020 to 2022
+author: "MW Beck"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r setup, echo = T, message = F, warning = F}
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+
+library(sf)
+library(dplyr)
+library(units)
+library(mapview)
+
+# # check layers
+# gdb <- 'T:/05_GIS/SWFWMD/Seagrass/2022_Seagrass/DraftMaps2022_1130.gdb'
+# st_layers(gdb)
+# 
+# chgdat <- st_read(dsn = gdb, layer = 'Seagrass_in_2022_Suncoast_ChangeAnalysis')
+# mapview(chgdat)
+# 
+# totals <- chgdat %>% 
+#   mutate(
+#     area = st_area(.),
+#     area = set_units(area, 'acres')
+#   ) %>% 
+#   st_set_geometry(NULL) %>% 
+#   summarise(
+#     area = sum(area), 
+#     .by = 'ANAYLSIS'
+#   )
+# 
+# # should be ~4161
+# diff(totals$area)
+
+data(sgdat2020)
+data(sgdat2022)
+
+# colors
+cols <- c('green4', 'tomato1')
+names(cols) <- c('gained', 'lost')
+
+# this is the projstring for NAD83(HARN) / Florida West (ftUS)
+# https://spatialreference.org/ref/epsg/2882/
+prj4 <- '+proj=tmerc +lat_0=24.33333333333333 +lon_0=-82 +k=0.999941177 +x_0=200000.0001016002 +y_0=0 +ellps=GRS80 +to_meter=0.3048006096012192 +no_defs'
+
+# reproject seagrass layers
+sgdat2020 <- sgdat2020 %>% 
+  st_transform(crs = prj4)
+stdat2022 <- sgdat2022 %>% 
+  st_transform(crs = prj4)
+```
+
+```{r, eval = F}
+# 2020 seagrass data
+a <- sgdat2020 %>% 
+  st_union(by_feature = TRUE) %>%
+  select(Category = FLUCCSCODE) %>% 
+  mutate(
+    Category = 'Seagrass',
+    Category = paste0(Category, ', 2020')
+  )
+
+# 2022 seagrass data
+b <- sgdat2022 %>% 
+  st_union(by_feature = TRUE) %>% 
+  select(Category = FLUCCSCODE) %>% 
+  mutate(
+    Category = 'Seagrass',
+    Category = paste0(Category, ', 2022')
+  )
+
+# so intersect doesnt complain about attributes
+st_agr(a) = "constant"
+st_agr(b) = "constant"
+
+# union separate layers for faster intersect
+aunion <- a %>% 
+  st_union %>% 
+  st_set_precision(1e5) %>% 
+  st_make_valid() %>% 
+  st_buffer(dist = 0)
+bunion <- b %>% 
+  st_union %>% 
+  st_set_precision(1e5) %>% 
+  st_make_valid() %>% 
+  st_buffer(dist = 0)
+
+# get full union
+op1 <- st_difference(a, bunion)
+op2 <- st_difference(b, aunion) %>%
+  rename(Category.1 = Category)
+op3 <- st_intersection(a, b)
+
+# combine
+unidat <- bind_rows(op1, op2, op3) %>%
+  mutate(
+    yr = unique(na.omit(sub('^.*\\,\\s([0-9]+)$', '\\1', Category))),
+    yr.1 = unique(na.omit(sub('^.*\\,\\s([0-9]+)$', '\\1', Category.1))),
+    Category = ifelse(is.na(Category), paste0('other, ', yr), as.character(Category)),
+    Category.1 = ifelse(is.na(Category.1), paste0('other, ', yr.1), as.character(Category.1)),
+    idval = 1:nrow(.)
+  ) %>%
+  dplyr::select(idval, Category.1, Category) %>%
+  dplyr::select(idval, source = Category, target = Category.1)
+
+# select only lost/gained
+chgdat20202022 <- unidat %>% 
+  ungroup() %>% 
+  filter(target == 'other, 2022' | source == 'other, 2020') %>% 
+  mutate(
+    Acres = st_area(.), 
+    Acres = set_units(Acres, 'acres'), 
+    Acres = as.numeric(Acres), 
+    var = case_when(
+      target == 'other, 2022' ~ 'lost', 
+      source == 'other, 2020' ~ 'gained'
+    )
+  ) %>% 
+  dplyr::filter(Acres > 0.023) # remove slivers and those less than the pixel size (dem pixel size is about 30x30ft)
+
+save(chgdat20202022, file = 'data/chgdat20202022.RData', compress = 'xz')
+```
+
+```{r}
+load(file = 'data/chgdat20202022.RData')
+
+mapview(chgdat20202022, zcol = 'var')
+```
+
+Check diff:
+
+```{r}
+totals <- chgdat20202022 %>%
+  st_set_geometry(NULL) %>%
+  summarise(
+    Acres = sum(Acres),
+    .by = 'var'
+  )
+diff(totals$Acres)
+```
+
