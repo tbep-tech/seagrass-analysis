@@ -29,13 +29,14 @@ box::use(
   tidyr[spread, gather],
   reactable[reactableOutput, renderReactable], 
   knitr[include_graphics, kable], 
-  R/funcs[sgrctfun, sgmapfun, sgchgfun, sgtotchgfun]
+  R/funcs[sgrctfun, sgmapfun, sgchgfun, sgtotchgfun, allsgmapfun]
 )
 data(file = 'seagrass', package = 'tbeptools')
 data(file = 'sgmanagement', package = 'tbeptools')
 load(file = here('data/allsegests.RData'))
 load(file = here('data/allmngests.RData'))
 load(file = here('data/segclp.RData'))
+load(file = here('data/allsgacres.RData'))
 
 # years to select
 yrs2 <- unique(allsegests$yr) %>% 
@@ -405,6 +406,18 @@ mngptcmap <- reactive({
   return(out)
   
 })
+
+# tabular sum of allsgdat by bay segment
+allsgtab <- reactive({
+  
+  # input
+  valtyp <- input$valtyp
+  
+  out <- allsgtabfun(allsgacres, valtyp)
+  
+  return(out)
+  
+})
 ```
 
 ```{r}
@@ -513,3 +526,12 @@ reactableOutput('mngptctab')
 output$mngptcmap <- renderLeaflet(mngptcmap())
 leafletOutput('mngptcmap', height = lfht)
 ```
+
+## Potential
+
+```{r, out.height = 600, out.width="100%"}
+allsgmapfun()
+output$allsgtab <- renderReactable(allsgtab())
+reactableOutput('allsgtab')
+```
+

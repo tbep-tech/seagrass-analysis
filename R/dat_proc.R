@@ -13,7 +13,6 @@ library(raster)
 # this is the projection for the seagrass segment layer from the district
 prj <- 2882
 
-
 # bay segments clipped to shore -------------------------------------------
 
 load(file = url('https://github.com/tbep-tech/benthic-dash/raw/main/data/segmask.RData'))
@@ -89,3 +88,63 @@ for(i in 1:length(fls)){
   save(list = flnm, file = here('data', paste0('/', flnm, '.RData')), compress = 'xz')
   
 }
+
+# union of all sg layers as "potential" -------------------------------------------------------
+
+library(sf)
+library(tidyverse)
+library(here)
+
+res <- list.files('data', '^sgdat') %>% 
+  enframe() %>% 
+  group_by(value) %>% 
+  nest %>% 
+  mutate(
+    dat = purrr::map(value, function(x){
+      
+      cat(x, '\t')
+      
+      # import file
+      load(file = here(paste0('data/', x)))
+      dat <- get(gsub('\\.RData', '', x))
+      
+      dat_out <- dat |> 
+        filter(FLUCCSCODE %in% c(9113, 9116)) |> 
+        st_union() |> 
+        st_geometry()
+      
+      return(dat_out)
+      
+    })
+  )
+
+out <- res$dat[[1]]
+for(i in 2:nrow(res)){
+  
+  cat(i, '\t')
+  out <- st_union(out, res$dat[[i]])
+  
+}
+
+allsgdat <- out
+save(allsgdat, file = here('data/allsgdat.RData'))     
+
+
+# area sum of allsgdat ------------------------------------------------------------------------
+
+load(file = here('data/allsgdat.RData'))
+
+# area sum
+allsgacres <- allsgdat %>%
+  st_transform(crs = prj) %>%
+  st_intersection(sgseg, .) %>%
+  filter(!segment %in% c('Upper Sarasota Bay-m', 'Gulf of Mexico')) %>% 
+  mutate(
+    Acres = st_area(.), 
+    Acres = units::set_units(Acres, 'acres'), 
+    Acres = as.numeric(Acres)
+  ) %>%
+  st_set_geometry(NULL) |> 
+  arrange(segment)
+
+save(allsgacres, file = here('data/allsgacres.RData'))

@@ -238,3 +238,31 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
   return(out)
   
 }
+
+#' @export
+allsgmapfun <- function(){
+  
+  box::use(
+    mapview[...], 
+    leaflet[...], 
+    dplyr[...], 
+    leafem[removeMouseCoordinates], 
+    here[...]
+  )
+  
+  load(file = here('data/allsgdat.RData'))
+
+  m <- mapview(allsgdat, homebutton = F, popup = NULL, legend = F, col.regions = '#006D2C', alpha = 0.8) %>% 
+    .@map %>% 
+    removeMouseCoordinates()
+  
+  return(m)
+  
+}
+
+#' @export
+allsgtabfun <- function(dat, valtyp){
+  
+  browser()
+  
+}
