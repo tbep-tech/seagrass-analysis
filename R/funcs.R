@@ -240,7 +240,7 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
 }
 
 #' @export
-allsgmapfun <- function(){
+allsgmapfun <- function(segclp){
   
   box::use(
     mapview[...], 
@@ -249,20 +249,74 @@ allsgmapfun <- function(){
     leafem[removeMouseCoordinates], 
     here[...]
   )
-  
+
   load(file = here('data/allsgdat.RData'))
 
   m <- mapview(allsgdat, homebutton = F, popup = NULL, legend = F, col.regions = '#006D2C', alpha = 0.8) %>% 
     .@map %>% 
-    removeMouseCoordinates()
+    removeMouseCoordinates() %>%
+    addPolygons(
+      data = segclp,
+      stroke = T,
+      color = 'black',
+      weight = 1,
+      layerId = ~segment,
+      fillColor = NA,
+      fillOpacity = 0,
+      label = ~segment)
   
   return(m)
   
 }
 
 #' @export
-allsgtabfun <- function(dat, valtyp){
+allsgtabfun <- function(dat, valtyp, firstwidth = 150){
   
-  browser()
+  box::use(
+    dplyr[...], 
+    reactable[...]
+  )
+  
+  sticky_style <- list(position = "sticky", left = 0, background = "#fff", zIndex = 1,
+                       borderRight = "1px solid #eee")
+  
+  # format for table 
+  totab <- dat %>% 
+    rename(
+      area = Acres
+    ) %>%
+    mutate(
+      area = case_when(
+        valtyp == 'Hectares' ~ area * 0.404686,
+        T ~ area
+        )
+    )
+  
+  out <- reactable(
+    totab, 
+    columns = list(
+      segment = colDef(name = 'Segment', footer = 'Total', minWidth = firstwidth, class = 'sticky left-col-1-bord', headerClass = 'sticky left-col-1-bord', footerClass = 'sticky left-col-1-bord'),
+      area = colDef(name = valtyp, format = colFormat(digits = 0, separators = TRUE))
+    ),
+    defaultColDef = colDef(
+      footer = function(values){
+        
+        if(!is.numeric(values))
+          return()
+        
+        formatC(round(sum(values), 0), format= "d", big.mark = ",")
+        
+      },
+      footerStyle = list(fontWeight = "bold"),
+      minWidth = 80, resizable = TRUE
+    ),
+    pagination = F, 
+    height = 360,
+    showPageSizeOptions = F,
+    highlight = T,
+    wrap = F
+  )
+  
+  return(out)
   
 }
