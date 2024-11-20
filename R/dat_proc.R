@@ -41,7 +41,7 @@ toint <- swfwmdtbseg %>%
   
 # all zipped files on amazon s3
 # downloaded from here https://data-swfwmd.opendata.arcgis.com/
-fls <- c('88', '90', '92', '94', '96', '99', '01', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22') %>% 
+fls <- c('88', '90', '92', '94', '96', '99', '01', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22', '24') %>% 
   paste0('https://swfwmd-seagrass.s3.amazonaws.com/sg', ., '.zip')
 
 for(i in 1:length(fls)){
@@ -128,7 +128,6 @@ for(i in 2:nrow(res)){
 
 allsgdat <- out
 save(allsgdat, file = here('data/allsgdat.RData'))     
-
 
 # area sum of allsgdat ------------------------------------------------------------------------
 
