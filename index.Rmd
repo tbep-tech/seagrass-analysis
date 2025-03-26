@@ -438,9 +438,6 @@ seagrass %>%
 [download figure](https://github.com/tbep-tech/State-of-the-Bay/raw/master/figures/seagrasscov.png){target="_blank"}
 
 ![](https://github.com/tbep-tech/State-of-the-Bay/raw/master/figures/seagrasscov.png)
-```{r, out.width = '100%'}
-include_graphics('figures/seagrasscov.png')
-```
 
 ## By segment {.tabset .tabset-pills}
 
