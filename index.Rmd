@@ -435,8 +435,9 @@ seagrass %>%
   kable(caption = 'All estimates for all segments, based on historical coverages used to report on annual progress toward recovery goals.', align = 'lrr')
 ```
 
-[download figure](https://github.com/tbep-tech/seagrass-analysis/raw/main/figures/seagrasscov.png){target="_blank"}
+[download figure](https://github.com/tbep-tech/State-of-the-Bay/raw/master/figures/seagrasscov.png){target="_blank"}
 
+![](https://github.com/tbep-tech/State-of-the-Bay/raw/master/figures/seagrasscov.png)
 ```{r, out.width = '100%'}
 include_graphics('figures/seagrasscov.png')
 ```
