@@ -39,6 +39,10 @@ toint <- swfwmdtbseg %>%
   st_transform(crs = prj) %>% 
   st_union()
   
+toint2024 <- swfwmdtbseg2024 %>% 
+  st_transform(crs = prj) %>% 
+  st_union()
+
 # all zipped files on amazon s3
 # downloaded from here https://data-swfwmd.opendata.arcgis.com/
 fls <- c('88', '90', '92', '94', '96', '99', '01', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22', '24') %>% 
@@ -64,16 +68,23 @@ for(i in 1:length(fls)){
   # delete files
   unlink(tmpdir, recursive = T)
   
-  if(any(c('FLUCCS_CODE', 'FLUCCS_COD') %in% names(dat_raw)))
-    names(dat_raw) <- gsub('^FLUCCS\\_COD$|^FLUCCS\\_CODE$', 'FLUCCSCODE', names(dat_raw))
+  if(any(c('FLUCCS_CODE', 'FLUCCS_COD', 'FLUCCS_Cod') %in% names(dat_raw)))
+    names(dat_raw) <- gsub('^FLUCCS\\_COD$|^FLUCCS\\_CODE$|^FLUCCS\\_Cod$', 'FLUCCSCODE', names(dat_raw))
   
   # crop by watershed and select fluccs
   # 9113 is patchy, 9116 is continuous
   dat_crp <- dat_raw %>%
     st_transform(crs = prj) %>%
     dplyr::select(FLUCCSCODE) %>% 
-    filter(FLUCCSCODE %in% c('9113', '9116')) %>%
-    st_intersection(toint)
+    filter(FLUCCSCODE %in% c('9113', '9116')) 
+  
+  if(!grepl('sg24', fls[i]))
+    dat_crp <- dat_crp %>% 
+      st_intersection(toint)
+  
+  if(grepl('sg24', fls[i]))
+    dat_crp <- dat_crp %>% 
+      st_intersection(toint2024)
   
   # name assignment and save
   flnm <- gsub('^sg|\\.zip$', '', basename(fls[i])) %>% 
@@ -126,7 +137,11 @@ for(i in 2:nrow(res)){
   
 }
 
-allsgdat <- out
+allsgdat <- out |> 
+  st_as_sf() |> 
+  st_collection_extract(type = 'POLYGON') |> 
+  st_geometry()
+
 save(allsgdat, file = here('data/allsgdat.RData'))     
 
 # area sum of allsgdat ------------------------------------------------------------------------
@@ -143,12 +158,24 @@ allsgacres <- allsgdat %>%
     Acres = units::set_units(Acres, 'acres'), 
     Acres = as.numeric(Acres)
   ) %>%
-  st_set_geometry(NULL) |> 
+  st_set_geometry(NULL) %>%
+  summarise(
+    Acres = sum(Acres), 
+    .by = segment
+  ) %>%
   arrange(segment)
 
 save(allsgacres, file = here('data/allsgacres.RData'))
 
 # segment coverages by year -------------------------------------------------------------------
+
+data("swfwmdtbseg", package = 'tbeptools')
+data("sgseg", package = 'tbeptools')
+
+swfwmdtbseg <- st_make_valid(swfwmdtbseg)
+sgseg <- st_make_valid(sgseg) %>%
+  dplyr::filter(segment %in% c('Boca Ciega Bay', 'Hillsborough Bay', 'Old Tampa Bay', 'Middle Tampa Bay',
+                                        'Lower Tampa Bay', 'Manatee River', 'Terra Ceia Bay'))
 
 fls <- list.files(path = 'T:/04_STAFF/MARCUS/03_GIT/hmpu-workflow/data', pattern = 'sgdat', full.names = T)
 
@@ -157,31 +184,11 @@ for(fl in fls){
   load(file = fl)
 }
 
-st_layers('T:/05_GIS/SWFWMD/Seagrass/2022_Seagrass/provisional/DraftMaps2022_1130.gdb/DraftMaps2022_1130.gdb')
-
-sgdat2022 <- st_read('T:/05_GIS/SWFWMD/Seagrass/2022_Seagrass/provisional/DraftMaps2022_1130.gdb/DraftMaps2022_1130.gdb', 
-                     layer = 'Seagrass_in_2022_Suncoast') %>% 
-  select(FLUCCSCODE = FLUCCS_Code) %>% 
-  filter(FLUCCSCODE %in% c(9113, 9116)) %>% 
-  st_cast('MULTIPOLYGON')
-
-levs <- c('oldTampaBay', 'hillsboroughBay', 'middleTampaBay', 'lowerTampaBay', 'bocaCiegaBay', 'terraCieaBay', 'manateeRiver')
-labs <- c('Old Tampa Bay', 'Hillsborough Bay', 'Middle Tampa Bay', 'Lower Tampa Bay', 'Boca Ciega Bay', 'Terra Ceia Bay', 'Manatee River')
-
-segswfwmd <- st_read('T:/05_GIS/SWFWMD/Seagrass/2022_Seagrass/provisional/DraftMaps2022_1130.gdb/DraftMaps2022_1130.gdb', 
-                     layer = 'suncoastSeagrassSegments') %>% 
-  filter(waterbodyName %in% levs) %>% 
-  mutate(
-    waterbodyName = factor(waterbodyName, levels = levs, labels = labs)
-  ) %>% 
-  select(segment = waterbodyName)
-
 sgyrs <- fls %>% 
   basename %>% 
-  gsub('\\.RData$', '', .) %>% 
-  c(., 'sgdat2022')
-
+  gsub('\\.RData$', '', .) 
 sgsegest <- NULL
+
 for(sgyr in sgyrs){
   
   cat(sgyr, '\n')
@@ -190,38 +197,34 @@ for(sgyr in sgyrs){
   
   dat <- get(sgyr) %>% 
     filter(FLUCCSCODE %in% c(9113, 9116)) %>% 
-    st_union() %>% 
-    st_transform(crs = st_crs(segswfwmd)) %>% 
-    st_intersection(segswfwmd, .) %>% 
-    mutate(
-      acres = st_area(.), 
-      acres = units::set_units(acres, 'acres'), 
-      acres = as.numeric(acres)
-    ) %>% 
-    st_set_geometry(NULL) %>% 
-    mutate(
-      year = as.numeric(yr)
-    )
+    st_union() |> 
+    st_make_valid()
+  
+  if(!grepl('2024', sgyr))
+    dat <- dat %>%  
+      st_transform(crs = st_crs(swfwmdtbseg)) %>% 
+      st_make_valid() %>%
+      st_intersection(swfwmdtbseg, .) 
+  
+  if(grepl('2024', sgyr))
+    dat <- dat %>%  
+      st_transform(crs = st_crs(sgseg)) %>% 
+      st_make_valid() %>%
+      st_intersection(sgseg, .)  
+  
+  dat <- dat %>%
+      mutate(
+        acres = st_area(.), 
+        acres = units::set_units(acres, 'acres'), 
+        acres = as.numeric(acres)
+      ) %>% 
+      st_set_geometry(NULL) %>% 
+      mutate(
+        year = as.numeric(yr)
+      )
   
   sgsegest <- rbind(sgsegest, dat)
   
 }
-
-# add 2024 manually, will need to update workflow once shapefiles are available
-sgsegest2024 <- sgsegest %>% 
-  filter(year == 2022) %>% 
-  mutate(
-    year = 2024, 
-    acres = case_when(
-      segment == 'Old Tampa Bay' ~ 3857,
-      segment == 'Hillsborough Bay' ~ 1165,
-      segment == 'Middle Tampa Bay' ~ 7956,
-      segment == 'Lower Tampa Bay' ~ 8026,
-      segment == 'Boca Ciega Bay' ~ 9084,
-      segment == 'Terra Ceia Bay' ~ 993,
-      segment == 'Manatee River' ~ 463
-    )
-  )
-sgsegest <- bind_rows(sgsegest, sgsegest2024)
 
 save(sgsegest, file = here('data/sgsegest.RData'))

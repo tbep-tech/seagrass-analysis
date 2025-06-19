@@ -26,7 +26,7 @@ flcat <- list(
 # estimates by segments ---------------------------------------------------
 
 allsegests <- tibble(
-    fls = list.files(here('data'), pattern = '^sg', full.names = T)
+    fls = list.files(here('data'), pattern = '^sgdat', full.names = T)
   ) %>% 
   mutate(
     yr = gsub('^sgdat|\\.RData$', '', basename(fls))
@@ -35,7 +35,7 @@ allsegests <- tibble(
   nest() %>% 
   mutate(
     data = pmap(list(yr, data), function(yr, data){
-      
+
       cat(yr, '\n')
 
       # load and get object name
@@ -45,6 +45,7 @@ allsegests <- tibble(
       # make sure crs is the same, get relevant fluccs
       sgrs <- get(obj) %>% 
         st_transform(crs = st_crs(bnds)) %>% 
+        st_make_valid() %>%
         filter(FLUCCSCODE %in% flcat[['code']])
       
       # estimate coverage by flucss, segment
@@ -73,7 +74,7 @@ save(allsegests, file = here('data/allsegests.RData'))
 # estimates by management areas -------------------------------------------
 
 allmngests <- tibble(
-  fls = list.files(here('data'), pattern = '^sg', full.names = T)
+  fls = list.files(here('data'), pattern = '^sgdat', full.names = T)
 ) %>% 
   mutate(
     yr = gsub('^sgdat|\\.RData$', '', basename(fls))
@@ -92,6 +93,7 @@ allmngests <- tibble(
       # make sure crs is the same, get relevant fluccs
       sgrs <- get(obj) %>% 
         st_transform(crs = st_crs(bnds)) %>% 
+        st_make_valid() %>%
         filter(FLUCCSCODE %in% flcat[['code']])
       
       # estimate coverage by flucss, area

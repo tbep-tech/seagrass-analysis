@@ -1,4 +1,3 @@
-#' @export
 sgchgfun <- function(datin, yrsel, colnm){
   
   box::use(
@@ -36,7 +35,6 @@ sgchgfun <- function(datin, yrsel, colnm){
   
 }
 
-#' @export
 sgtotchgfun <- function(sums, yrsel){
   
   box::use(
@@ -66,7 +64,6 @@ sgtotchgfun <- function(sums, yrsel){
   
 }
 
-#' @export
 sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 150){
 
   box::use(
@@ -158,11 +155,10 @@ sgrctfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, firstwidth = 1
   
 }
 
-#' @export
 sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
   
   box::use(
-    mapview[...], 
+    tbeptools[util_map], 
     leaflet[...], 
     dplyr[...], 
     leafem[removeMouseCoordinates], 
@@ -180,19 +176,16 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
     palette = c(rev(colred), colgrn),
     domain = c(-1 * maxv, maxv)
     )
-  
+
   # rename polygons to common
   names(bndin)[names(bndin) %in% tolower(colnm)] <- 'bnds'
-  
+
   # polygon boundaries
   toint <- bndin %>% 
     filter(bnds %in% unique(datin[[colnm]]))
 
   # empty base map
-  mapin <- mapview(toint, homebutton = F, popup = NULL, legend = F) %>% 
-    .@map %>% 
-    removeMouseCoordinates() %>% 
-    clearShapes()
+  mapin <- bsmap(bnds = toint)
 
   # get change summary
   sums <- sgchgfun(datin, yrsel, colnm)
@@ -221,7 +214,7 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
 
     # map
     out <- mapin %>% 
-      addPolygons(
+      leaflet::addPolygons(
         data = tomap,
         stroke = T,
         color = 'black',
@@ -239,22 +232,29 @@ sgmapfun <- function(datin, colnm = c('Segment', 'Areas'), yrsel, bndin, maxv){
   
 }
 
-#' @export
 allsgmapfun <- function(segclp){
   
   box::use(
-    mapview[...], 
     leaflet[...], 
     dplyr[...], 
-    leafem[removeMouseCoordinates], 
-    here[...]
+    here[...],
+    sf[st_as_sf, st_transform]
   )
 
   load(file = here('data/allsgdat.RData'))
 
-  m <- mapview(allsgdat, homebutton = F, popup = NULL, legend = F, col.regions = '#006D2C', alpha = 0.8) %>% 
-    .@map %>% 
-    removeMouseCoordinates() %>%
+  allsgdat <- st_as_sf(allsgdat) %>%
+    st_transform(crs = 4326)
+
+  m <- bsmap(segclp) %>%
+    addPolygons(
+      data = allsgdat,
+      stroke = T,
+      color = 'black',
+      weight = 1,
+      fillColor = '#006D2C',
+      fillOpacity = 0.8
+    ) %>%
     addPolygons(
       data = segclp,
       stroke = T,
@@ -269,7 +269,6 @@ allsgmapfun <- function(segclp){
   
 }
 
-#' @export
 allsgtabfun <- function(dat, valtyp, firstwidth = 150){
   
   box::use(
@@ -316,6 +315,33 @@ allsgtabfun <- function(dat, valtyp, firstwidth = 150){
     highlight = T,
     wrap = F
   )
+  
+  return(out)
+  
+}
+
+bsmap <- function(bnds){
+  
+  box::use(
+    dplyr[...],
+    leaflet[...], 
+    sf[st_bbox, st_transform]
+  )
+  bnds <- sf::st_bbox(bnds)
+  
+  esri <- rev(grep("^Esri", leaflet::providers, value = TRUE))
+  
+  m <- leaflet::leaflet() %>%
+    leaflet::fitBounds(bnds[['xmin']], bnds[['ymin']], bnds[['xmax']], bnds[['ymax']])
+  
+  for (provider in esri) {
+    m <- m %>% leaflet::addProviderTiles(provider, group = provider)
+  }
+  
+  out <- m %>%
+    leaflet::addLayersControl(baseGroups = names(esri),
+                              options = leaflet::layersControlOptions(collapsed = T),
+                              position = 'topleft')
   
   return(out)
   
