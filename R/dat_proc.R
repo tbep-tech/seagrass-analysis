@@ -152,7 +152,7 @@ load(file = here('data/allsgdat.RData'))
 allsgacres <- allsgdat %>%
   st_transform(crs = prj) %>%
   st_intersection(sgseg, .) %>%
-  filter(!segment %in% c('Upper Sarasota Bay-m', 'Gulf of Mexico')) %>% 
+  filter(!segment %in% c('Upper Sarasota Bay-m', 'Gulf of Mexico', 'St Joseph Sound')) %>% 
   mutate(
     Acres = st_area(.), 
     Acres = units::set_units(Acres, 'acres'), 
