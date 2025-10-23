@@ -532,7 +532,7 @@ leafletOutput('mngptcmap', height = lfht)
 
 ## All maps combined
 
-This tab shows a potential maximum of seagrass based on all coverage maps combined from 1988 to present (continuous and patchy).  The total area does not consider changing light conditions or bathymetry and is meant to show only areas where seagrasses have occurred in the period of record. 
+This tab shows a potential maximum of seagrass based on all SWFWMD coverage maps combined from 1988 to present (continuous and patchy) and a 1950s baseline map.  The total area does not consider changing light conditions or bathymetry and is meant to show only areas where seagrasses have occurred in the past. 
 
 ```{r}
 output$allsgtab <- renderReactable(allsgtab())

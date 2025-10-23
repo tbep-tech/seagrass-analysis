@@ -136,6 +136,15 @@ for(i in 2:nrow(res)){
   out <- st_union(out, res$dat[[i]])
   
 }
+# 1950s layer
+# https://data-waterinstitute.opendata.arcgis.com/datasets/WaterInstitute::tampa-bay-seagrass-1950/about
+sgdat1950 <- st_read('https://gis.waterinstitute.usf.edu/arcgis/rest/services/Atlases/TampaBay/MapServer/7/query?outFields=*&where=1%3D1&f=geojson') |> 
+  st_transform(crs = st_crs(allsgdat)) |> 
+  st_make_valid() |> 
+  st_union() |> 
+  st_geometry() 
+
+out <- st_union(out, sgdat1950)
 
 allsgdat <- out |> 
   st_as_sf() |> 
